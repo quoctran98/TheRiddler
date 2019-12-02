@@ -2,7 +2,7 @@
 title: "How Low Can You Roll?"
 author: "Quoc Tran"
 date: "11/15/2019"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
