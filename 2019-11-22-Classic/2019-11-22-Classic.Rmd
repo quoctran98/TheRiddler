@@ -1,0 +1,82 @@
+---
+title: "Can You Decode The Riddler Lottery?"
+author: "Quoc Tran"
+date: "11/22/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Riddler Classic
+
+From Charlie Cordova comes a puzzle that brings logic and number theory to the lottery:
+
+Five friends with a lot in common are playing the Riddler Lottery, in which each must choose exactly five numbers from 1 to 70. After they all picked their numbers, the first friend notices that no number was selected by two or more friends. Unimpressed, the second friend observes that all 25 selected numbers are composite (i.e., not prime). Not to be outdone, the third friend points out that each selected number has at least two distinct prime factors. After some more thinking, the fourth friend excitedly remarks that the product of selected numbers on each ticket is exactly the same. At this point, the fifth friend is left speechless. (You can tell why all these people are friends.)
+
+What is the product of the selected numbers on each ticket?
+
+*Extra credit*: How many *different ways* could the friends have selected five numbers each so that all their statements are true?
+
+## My Solution
+
+I wrote functions to find if a number is prime and to find all primes in a set (`isPrime` and `findPrimes`), to find all the prime factors of a number (`findPrimeFactors`), and to calculate the product of all numbers in a set (`findProduct`) in the file `functions.R`.
+
+Generating a set of all possible numbers from 1 to 70 in the vector `allNumbers`, we can exculde all prime numbers (1 is considered composite in this case) thanks to the second friend's observation, using `isPrime` on all values in the vector. This yields 51 remaining numbers.
+
+```{r}
+source("functions.R")
+allNumbers <- 1:70
+allNumbers <- allNumbers[!sapply(allNumbers, isPrime)]
+print(allNumbers)
+```
+
+With the third friend's observation, we can exclude all numbers who's prime factorization yields less than 2 prime factors. We can apply `findPrimeFactors` on each number in the remaining set. This yields 41 remaining numbers.
+
+```{r}
+for (number in allNumbers) {
+  if (length(findPrimeFactors(number)) < 2) {
+    allNumbers <- allNumbers[allNumbers != number]
+  }
+}
+print(allNumbers)
+```
+
+Because each set of 5 numbers chosen by each friend has the same product, we can look at the prime factorizations of each number and exclude the numbers with prime factors that do not occur at least 5 times. Each of the 5 sets must have the same prime factorization, so numbers with prime factors that do not appear at least 5 times in the whole set cannot be used in any set. We are left with 28 numbers.
+
+```{r}
+allPrimeFactors <- sapply(allNumbers, findPrimeFactors)
+badFactors <- c()
+uniqueFactors <- unique(unlist(allPrimeFactors))
+
+for (factor in uniqueFactors) {
+  counts <- sum(unlist(allPrimeFactors) == factor)
+  if (counts < 5) {
+    badFactors <- c(badFactors,factor)
+  }
+}
+
+for (number in allNumbers) {
+  if (TRUE %in% (findPrimeFactors(number) %in% badFactors)) {
+    allNumbers <- allNumbers[allNumbers != number]
+  }
+}
+
+allPrimeFactors <- sapply(allNumbers, findPrimeFactors)
+print(allNumbers)
+```
+
+With the list of possible numbers narrowed down to 28, we can use the `arrangements` package to quickly iterate through all possible combinations of 25 values from 28. Because the product of each of the 5 sets of 5 numbers is the same, we know that the fifth root of the product of all 25 numbers together must be a whole number. This is tested with `%% 1 == 0` but since computers are weird and they do rounding stuff, I have it as `%% 1 < 0.0001`. This returns the product of each set and the set of all 25 numbers.
+
+```{r}
+library(arrangements)
+allCombos <- icombinations(allNumbers,25)
+for (i in 1:ncombinations(allNumbers,25)) {
+  combo <- allCombos$getnext()
+  if (((findProduct(combo))^(1/5)) %% 1 < 0.0001 ) {
+    print(((findProduct(combo))^(1/5)))
+    print(combo)
+  }
+}
+```
