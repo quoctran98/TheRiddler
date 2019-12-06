@@ -1,0 +1,148 @@
+---
+title: "How Fast Can You Skip To Your Favorite Song?"
+author: "Quoc Tran"
+date: "12/06/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Riddler Classic
+
+From Austin Chen comes a riddle of efficiently finding a song:
+
+You have a playlist with exactly 100 tracks (i.e., songs), numbered 1 to 100. To go to another track, there are two buttons you can press: (1) “Next,” which will take you to the next track in the list or back to song 1 if you are currently on track 100, and (2) “Random,” which will take you to a track chosen uniformly from among the 100 tracks. Pressing “Random” can restart the track you’re already listening to — this will happen 1 percent of the time you press the “Random” button.
+
+For example, if you started on track 73, and you pressed the buttons in the sequence “Random, Next, Random, Random, Next, Next, Random, Next,” you might get the following sequence of track numbers: 73, 30, 31, 67, 12, 13, 14, 89, 90. You always know the number of the track you’re currently listening to.
+
+Your goal is to get to your favorite song (on track 42, [of course](https://www.independent.co.uk/life-style/history/42-the-answer-to-life-the-universe-and-everything-2205734.html)) with as few button presses as possible. What should your general strategy be? Assuming you start on a random track, what is the average number of button presses you would need to make to reach your favorite song?
+
+## My Solution
+
+The first thing I want to do is redefine the goal so that instead of my favoarite song being track 42, it's track 100. This will make it easier so I don't have to loop from 100 back to 1, since no algorithm should hit the next button once it's at track 100. This also shouldn't affect anything mathematically because since we start off at a random track, it shouldn't matter what our desired track is.
+
+Here's some reusable code that we can use when testing different algorithms
+
+```{r}
+library(ggplot2)
+
+numPresses <- 0
+currTrack <- sample(1:100,1)
+
+newRun <- function() {
+  numPresses <<- 0
+  currTrack <<- sample(1:100,1)
+}
+
+pressNext <- function() {
+  numPresses <<- numPresses + 1
+  currTrack <<- currTrack + 1
+}
+
+pressRandom <- function() {
+  numPresses <<- numPresses + 1
+  currTrack <<- sample(1:100,1)
+}
+
+```
+
+### Only Random Button
+
+This algorithm will only hit the random button. Mathematically, it should take an average of 100 button presses to arrive at our desired track. We can run 1,000 simulations and get a histogram of how many presses it takes to get to our track.
+
+```{r}
+allRuns <- c()
+
+for (run in 1:1000) {
+  newRun()
+  while (currTrack != 100) {
+    pressRandom()
+  }
+  allRuns <- c(allRuns,numPresses)
+}
+
+ggplot() + 
+  aes(allRuns) + 
+  geom_histogram(binwidth=1) +
+  ylab("Frequency") +
+  xlab("Button Presses") +
+  ggtitle("Using only the 'Random' button")
+
+print(mean(allRuns))
+```
+
+### Only Next Button
+
+This algorithm will only hit the next button. Mathematically, it should take an average of 50 button presses to arrive at our desired track. We can run 1,000 simulations and get a histogram of how many presses it takes to get to our track.
+
+```{r}
+allRuns <- c()
+
+for (run in 1:1000) {
+  newRun()
+  while (currTrack != 100) {
+    pressNext()
+  }
+  allRuns <- c(allRuns,numPresses)
+}
+
+ggplot() + 
+  aes(allRuns) + 
+  geom_histogram(binwidth=1) +
+  ylab("Frequency") +
+  xlab("Button Presses") +
+  ggtitle("Using only the 'Next' button")
+
+print(mean(allRuns))
+```
+
+## Using Random Button then Next Button
+
+This algorithm will press the random button until it's "close enough" to the desired track, then it will hit the next button to get to the desired track. Intuitively, this seems like the most optimal strategy. The problem lies in finding out what's "close enough". The number of average button presses total $y$ can be determined from how close to the desired track the algorithm will switch over to pressing the next button $x$, using the equation:
+
+$$y = \frac{100}{x} + x$$
+
+For example, if our "close enough" value $x$ is 20, then the average number of button presses $y$ to get to the desired track will be $y = \frac{100}{20} + 20 = 25$, because it will take us, on average $\frac{100}{x}$ presses of the "random" button to get within $x$ tracks less than our desired track and them from there it will take us an additional $+ x$ presses of the "next" button to get to our desired track. To find the optimal "close enough" value of $x$ all we have to do is solve for the local minimum of the equation where $x = [1,100]$. 
+
+```{r}
+myFunc <- function(x) {
+  y <- (100/x) + x
+  return(y)
+}
+df <- data.frame(1:100, myFunc(1:100))
+colnames(df) <- c("x","y")
+ggplot(df, aes(x=x, y=y)) + 
+  geom_point(alpha=0) + 
+  geom_line()
+
+print(paste("(",df$x[df$y==min(df$y)],",",min(df$y),")",sep=""))
+```
+
+The local minimum in our domain is $x = 10$ which results in $y = 20$. With this, we can run 1,000 simulations and get a histogram of how many presses it takes to get to our track.
+
+```{r}
+allRuns <- c()
+
+for (run in 1:1000) {
+  newRun()
+  while (currTrack != 100) {
+    if (100 - currTrack > 10) {
+      pressRandom()
+    } else {
+      pressNext()
+    }
+  }
+  allRuns <- c(allRuns,numPresses)
+}
+
+ggplot() + 
+  aes(allRuns) + 
+  geom_histogram(binwidth=1) +
+  ylab("Frequency") +
+  xlab("Button Presses") +
+  ggtitle("Using the 'Random' button until 10 tracks from the desired track then 'Next' buttons")
+
+print(mean(allRuns))
+```
