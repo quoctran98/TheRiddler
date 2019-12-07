@@ -1,15 +1,17 @@
 ---
-title: "How Low Can You Roll?"
+title: "Riddler Classic Solution: How Low Can You Roll?"
 author: "Quoc Tran"
 date: "11/15/2019"
-output: github_document
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Riddler Classic
+## [Riddler Classic](https://fivethirtyeight.com/features/how-low-can-you-roll/)
+
+#### By Zach Wissner-Gross
 
 From Ricky Jacobson comes a puzzle of seeing how low you can roll:
 
@@ -20,6 +22,8 @@ To start the game, you roll the die. Your current “score” is the number show
 For example, suppose you roll the following: 6, 2, 5, 1, 8, 1, 0. After your first roll, your score would be 0.6, After the second, it’s 0.62. You ignore the third roll, since 5 is greater than the current last digit, 2. After the fourth roll, your score is 0.621. You ignore the fifth roll, since 8 is greater than the current last digit, 1. After the sixth roll, your score is 0.6211. And after the seventh roll, the game is over — 0.6211 is your final score.
 
 What will be your *average* final score in this game?
+
+***
 
 ## My Solution
 

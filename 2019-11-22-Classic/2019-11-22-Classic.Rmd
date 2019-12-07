@@ -1,5 +1,5 @@
 ---
-title: "Can You Decode The Riddler Lottery?"
+title: "Riddler Classic Solution: Can You Decode The Riddler Lottery?"
 author: "Quoc Tran"
 date: "11/22/2019"
 output: html_document
@@ -9,7 +9,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Riddler Classic
+## [Riddler Classic](https://fivethirtyeight.com/features/can-you-decode-the-riddler-lottery/)
+
+#### By Zach Wissner-Gross
 
 From Charlie Cordova comes a puzzle that brings logic and number theory to the lottery:
 
@@ -18,6 +20,8 @@ Five friends with a lot in common are playing the Riddler Lottery, in which each
 What is the product of the selected numbers on each ticket?
 
 *Extra credit*: How many *different ways* could the friends have selected five numbers each so that all their statements are true?
+
+***
 
 ## My Solution
 

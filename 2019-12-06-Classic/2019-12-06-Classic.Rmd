@@ -1,19 +1,17 @@
 ---
-title: "How Fast Can You Skip To Your Favorite Song?"
+title: "Riddler Classic Solution: How Fast Can You Skip To Your Favorite Song?"
 author: "Quoc Tran"
 date: "12/06/2019"
-<<<<<<< HEAD
-output: pdf_document
-=======
-output: github_document
->>>>>>> cb68cdba161e235335c3469ee495efb637e780ed
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Riddler Classic
+### [Riddler Classic](https://fivethirtyeight.com/features/how-fast-can-you-skip-to-your-favorite-song/)
+
+#### By Zach Wissner-Gross
 
 From Austin Chen comes a riddle of efficiently finding a song:
 
@@ -22,6 +20,8 @@ You have a playlist with exactly 100 tracks (i.e., songs), numbered 1 to 100. To
 For example, if you started on track 73, and you pressed the buttons in the sequence “Random, Next, Random, Random, Next, Next, Random, Next,” you might get the following sequence of track numbers: 73, 30, 31, 67, 12, 13, 14, 89, 90. You always know the number of the track you’re currently listening to.
 
 Your goal is to get to your favorite song (on track 42, [of course](https://www.independent.co.uk/life-style/history/42-the-answer-to-life-the-universe-and-everything-2205734.html)) with as few button presses as possible. What should your general strategy be? Assuming you start on a random track, what is the average number of button presses you would need to make to reach your favorite song?
+
+***
 
 ## My Solution
 
@@ -57,11 +57,7 @@ pressRandom <- function() {
 
 ### Using only the random button
 
-<<<<<<< HEAD
 This algorithm will only hit the random button. Mathematically, it should take an average of 100 button presses of the "random" button to arrive at our desired track out of 100 tracks. We can run 10,000 simulations and get a histogram of how many presses it takes to get to our track.
-=======
-This algorithm will only hit the random button. Mathematically, it should take an average of 100 button presses of the "random" button to arrive at our desired track out of 100 tracks. We can run 1,000 simulations and get a histogram of how many presses it takes to get to our track.
->>>>>>> cb68cdba161e235335c3469ee495efb637e780ed
 
 ```{r}
 allRuns <- c()
@@ -86,11 +82,7 @@ print(mean(allRuns))
 
 ### Using only the next button
 
-<<<<<<< HEAD
 This algorithm will only hit the next button. Given a random starting point and that the tracks loop from 100 to 1, it should take an average of 50 button presses to arrive at our desired track. We can run 10,000 simulations and get a histogram of how many presses it takes to get to our track.
-=======
-This algorithm will only hit the next button. Given a random starting point and that the tracks loop from 100 to 1, it should take an average of 50 button presses to arrive at our desired track. We can run 1,000 simulations and get a histogram of how many presses it takes to get to our track.
->>>>>>> cb68cdba161e235335c3469ee495efb637e780ed
 
 ```{r}
 allRuns <- c()
@@ -113,11 +105,7 @@ ggplot() +
 print(mean(allRuns))
 ```
 
-<<<<<<< HEAD
 ## Using the random button then then next button
-=======
-## Using Random Button then Next Button
->>>>>>> cb68cdba161e235335c3469ee495efb637e780ed
 
 This algorithm will press the random button until it's "close enough" to the desired track, then it will hit the next button to get to the desired track. Intuitively, this seems like the most optimal strategy. The problem lies in finding out what's "close enough". The number of average button presses total $y$ can be determined from how close to the desired track the algorithm will switch over to pressing the next button $x$, using this equation:
 
@@ -163,11 +151,7 @@ ggplot() +
   geom_histogram(binwidth=1) +
   ylab("Frequency") +
   xlab("Button Presses") +
-<<<<<<< HEAD
-  ggtitle("Using 'random' until 10 tracks from the desired track then 'next'")
-=======
-  ggtitle("Using 'Random' until 10 tracks from the desired track then 'Next'")
->>>>>>> cb68cdba161e235335c3469ee495efb637e780ed
+  ggtitle("Using the 'random' then 'next' buttons")
 
 print(mean(allRuns))
 ```

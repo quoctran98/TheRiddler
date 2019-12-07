@@ -1,0 +1,28 @@
+---
+title: "Riddler Express Solution: BB-8 on Jakku"
+author: "Quoc Tran"
+date: "12/6/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## [Riddler Express](https://fivethirtyeight.com/features/how-fast-can-you-skip-to-your-favorite-song/)
+
+#### By Zach Wissner-Gross
+
+For this week’s Express, I present an apparent coincidence that has [bothered me since 2015](https://www.imdb.com/title/tt2488496/):
+
+After being ambushed by the forces of the First Order on the planet Jakku, the droid BB-8 narrowly escaped and requires immediate help. Fortunately, there is one person (named Rey) on the planet who can help BB-8, but they’ve never met and BB-8 has no idea where Rey is located.
+
+Even if BB-8 did know where Rey was, what’s the probability that BB-8 could reach her within 24 hours? Assume Jakku has a radius of 4,000 miles (similar to Earth) and that BB-8 rolls along at a speed of 3 miles per hour.
+
+(Note: FiveThirtyEight is owned by Disney, which also owns BB-8, Jakku and whatever ramshackle hut Rey is hiding out in.)
+
+***
+
+## My Solution
+
+At 3 miles per hour, in 24 hours BB-8 can reach anywhere in a circle with a radius of $3mph \cdot 24hrs = 72mi$, covering an area of $A = \pi 72^2 = 16286.02mi^2$. Jakku, in Zach's secnario, has a radius of 4,000 miles and has a surface area of $A = 4 \pi 4000^2 = 201061930mi^2$. The area that BB-8 can cover makes up 8.10e-05 of the surface area of the planet.
