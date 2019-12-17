@@ -107,24 +107,35 @@ print(mean(allRuns))
 
 ## Using the random button then then next button
 
-This algorithm will press the random button until it's "close enough" to the desired track, then it will hit the next button to get to the desired track. Intuitively, this seems like the most optimal strategy. The problem lies in finding out what's "close enough". The number of average button presses total $y$ can be determined from how close to the desired track the algorithm will switch over to pressing the next button $x$, using this equation:
+This strategy will press the random button until it's "close enough" to the desired track, then it will hit the next button to get to the desired track. Intuitively, this seems like the most optimal strategy. This strategy is the only valid strategy that combines both the use of the random and the next button. No strategy should use the random button after the next button is pressed because the random button operates independent from the current track, so it negates any effect of the next button. Following this logic, the only strategy that combines the use of both buttons should use the random button first and then the next button.
 
-$$y = \frac{99}{(x-1)} (1 - \frac{x}{100}) + \frac{x}{2}$$
+The problem lies in finding out what is "close enough" to switch from the random button to the next button, but we can model this strategy mathematically to find that threshold. The number of average button presses total $y$ can be determined from this "close enough" threshold $x$, using this equation:
 
-In our equation, the $\frac{99}{(x-1)}$ is the average number of presses needed to get within $x$ of the desired track, the term $(1 - \frac{x}{100})$ accounts for the probability of our starting track already being within the "close enough" range. The $+\frac{x}{2}$ is the additional number of clicks needed to get from being in the range to the desired track, given that you can appear anywhere in the range with equal probability.
+$$y = \frac{99}{(x+1)} (1 - \frac{x}{100}) + \frac{x}{2}$$
 
-For example, if our "close enough" value $x$ is 20, then the average number of button presses $y$ to get to the desired track will be $y = \frac{99}{(20-1)} (1 - \frac{20}{100}) + \frac{20}{2} = 14.17$. To find the optimal "close enough" value of $x$ all we have to do is solve for the local minimum of the equation where $x = [1,100]$. 
+$\frac{99}{(x+1)}$ is the average number of presses of the random button needed to get within the "close enough" threshold $x$ below of the desired track. This expression is derived from $\frac{x}{100}$ being the probability that any press of the random button will land on the track within the "close enough" threshold. Its reciprocal, then, $\frac{100}{x}$ is the average number of presses of the random button needed to get into the "close enough" threshold. The 99 instead of 100 in the numerator accounts for the possiblity of landing on track 42 directly. and the $(x+1)$ instead of $x$ in the denominator accounts for the "close enough" range being inclusive.
+
+$(1 - \frac{x}{100})$ is the probability that our random starting track won't be in the "close enough" range. Since we only want to count the first term that accounts for the average number of presses of the random button if we don't already start in the "close enough" range, we multiple this term by the first.
+
+$\frac{x}{2}$ is average number of presses of the next button needed get to the desired track once we're within the "close enough" range because the random button can take us anywhere within the range and it will take us on average half of the range to traverse it with our next button.
+
+For example, if our "close enough" value $x$ is 20, then the average number of presses of the random button to take us between tracks 22 and 42 is $\frac{99}{(20+1)} = 4.71$, However, the probability that our starting track is between 22 and 42 is $\frac{20}{100} = 0.2$, so the first term should only apply 80% of the time, so it's multiplied by $(1 - \frac{20}{100}) = 0.8$, resulting in 3.77 presses of the random button on average to either appear in the range or already start in it. Once we are within the range of track 22 to 42, we can be anwhere in the range with uniform distribution by the nature of the random button, so it will take us an average of $\frac{20}{2} = 10$ presses of the next button to get to track 42, so that's added on the final number making it an average of 13.77 button presses in total to get to track 42 using this strategy with a "close enough" threshold of 20.
+
+To find the actual optimal "close enough" threshold $x$ all we have to do is solve for the local minimum of the equation where $x = [1,100]$. 
 
 ```{r}
 myFunc <- function(x) {
-  y <- (99/(x+1)) * (1-(x/100)) + (x/2)
+  y <- (99/(2x+2)) * (1-(2x/100)) + (x/2)
   return(y)
 }
 df <- data.frame(1:100, myFunc(1:100))
 colnames(df) <- c("x","y")
 ggplot(df, aes(x=x, y=y)) + 
   geom_point(alpha=0) + 
-  geom_line()
+  geom_line() +
+  xlab("'Close Enough' Threshold") +
+  ylab("Average Number of Button Presses") + 
+  ggtitle("Model to find the 'close enough' threshold")
 
 print(paste("(",df$x[df$y==min(df$y)],",",round(min(df$y),digits=2),")",sep=""))
 ```
@@ -156,4 +167,42 @@ ggplot() +
 print(mean(allRuns))
 ```
 
-Our simulations match the model. The optimal strategy is to click the "random" button until we get within 13 songs of our desired track, then to hit the "next" button. This will get us to the desired track with 12.7 button presses on average.
+With these parameters, we find that the optimal strategy is to click the "random" button until we get within 13 songs below our desired track, then to hit the "next" button to get to that track. This will get us to the desired track with 12.65 button presses on average.
+
+Further we can validate the model by running many simulations with each different "close enough" threshold from 1 to 100. The average number of button presses for each "close enough" threshold can be plotted against the model and the standard deviation for each point can also be plotted.
+
+```{r}
+
+allRuns <- c()
+compRuns <- data.frame(vector(mode="numeric", length=100), vector(mode="numeric", length=100), vector(mode="numeric", length=100))
+colnames(compRuns) <- c("x","y","sd")
+
+for (domain in 1:100) {
+  for (run in 1:1000) {
+    newRun()
+    while (currTrack != 100) {
+      if (100 - currTrack > domain) {
+        pressRandom()
+      } else {
+        pressNext()
+      }
+    }
+    allRuns <- c(allRuns,numPresses)
+  }
+  compRuns[domain,] <- c(domain,mean(allRuns),sd(allRuns))
+  allRuns <- c()
+}
+
+plotModel <- qplot(y=df$y,x=df$x) 
+plotSim <- qplot(y=compRuns$y,x=compRuns$x) 
+
+plotModel +
+  geom_line() +
+  geom_point(mapping=plotSim$mapping) +
+  geom_errorbar(aes(ymin=compRuns$y-compRuns$sd, ymax=compRuns$y+compRuns$sd), width=.1) +
+  xlab("'Close Enough' Threshold") +
+  ylab("Average Number of Button Presses") + 
+  ggtitle("Model overlaid with simulation runs")
+```
+
+We can see that our simulations match the model and that this strategy of pressing the "random" button until we get within 13 songs below our desired track, then to hit the "next" button is not only optimal in terms of minimizing the average number of button presses needed to reach our desired tracks but also to reduce the spread of the number of button presses needed each time this strategy is deployed.

@@ -1,0 +1,120 @@
+---
+title: "Riddler Classic Solution: Can You Solve A Particularly Prismatic Puzzle?"
+author: "Quoc Tran"
+date: "12/13/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-solve-a-particularly-prismatic-puzzle/)
+
+#### By Zach Wissner-Gross
+
+From Steve Abney comes a particularly prismatic puzzle:
+
+Suppose I have a rectangle whose side lengths are each a whole number, and whose area (in square units) is the same as its perimeter (in units of length). What are the possible dimensions for this rectangle?
+
+Alas, that’s not the riddle — that’s just the appetizer. The rectangle could be 4 by 4 or 3 by 6. You can check both of these: 4 · 4 = 16 and 4 + 4 + 4 + 4 = 16, while 3 · 6 = 18 and 3 + 6 + 3 + 6 = 18. These are the *only* two whole number dimensions the rectangle could have. (One way to see this is to call the rectangle’s length *a* and its width *b*. You’re looking for whole number solutions to the equation *ab = 2a + 2b*.)
+
+On to the main course! Instead of rectangles, let’s give [rectangular prisms](http://mathworld.wolfram.com/Cuboid.html) a try. What whole number dimensions can rectangular prisms have so that their volume (in cubic units) is the same as their surface area (in square units)?
+
+To get you started, Steve notes that 6 by 6 by 6 is one such solution. How many others can you find?
+
+***
+
+## My Solution
+
+At the most basic, where $x$, $y$, $z$ are side lengths of the rectangular prism, solving this Riddler requires finding all integer soluions that satisfy 
+
+$$xyz = 2(xy + yz + zx)$$ 
+
+To brute force an answer (which I will do because I have no idea on how to actually solve this analytically) we should first find the constraints of the problem. Our equation can be simplified to
+
+$$\frac{1}{2}=\frac{1}{x} + \frac{1}{y} + \frac{1}{z}$$ 
+
+Since it doesn't matter which dimension of the rectangular prism is which (a 1 x 2 x 3 rectuangular prism is the same as one that's 3 x 2 x 1) and to later easier remove dupicate solutions, we can define the dimensions of our rectangular prism as $x \leq y \leq z$.
+
+Analytically, we can find that the constraints of our smallest dimension, in the domain of positive integers. For $0 < x \leq 2$, one or both of the other dimensions must be negative in order to satisfy the equation. For $x \geq 7$, no values of $y \geq 7$ or $z \geq 7$ can ever be make the right side of the equation large enough to equal one-half. So our smallest dimension $x$ is defined as $3 \leq x \leq 6$.
+
+These constraints can allow us to brute force the solution in a much less computationally expensive way, checking only $7,946,091$ instead of $1,003,003,001$ to reach a maximum dimension of side length equal to 1000.
+
+```{r}
+
+allSolutions <- data.frame(NA,NA,NA)
+colnames(allSolutions) <- c("x","y","z")
+
+for (x in 3:6) {
+  for (y in x:1000) {
+    for (z in y:1000) {
+      if ((x*y*z) == (2*((x*y)+(y*z)+(z*x)))) { #used this equation instead because computers don't like division apparently
+        solution <- c(x,y,z)
+        allSolutions <<- rbind(allSolutions,solution)
+      }
+    }
+  }
+}
+
+allSolutions <- allSolutions[-1,]
+
+for (row in 1:nrow(allSolutions)) {
+  print(paste("(",allSolutions[row,1],",",allSolutions[row,2],",",allSolutions[row,3],")",sep=""))
+}
+```
+
+In the search range of 3 to 1000, we find 10 positive integer solutions to this equation. The largest dimension in our solution space has a side length of 42 in our search, so I assume that my search was exhaustive enough and there probably aren't more solutions, but who knows. Who can really be sure of anything in the wild and wacky field of mathematics?
+
+Here's a cool 3D representation of all the unique solutions and we can even see what these boxes would look by hovering over them thanks to Plotly:
+
+```{r, message=FALSE}
+library(plotly)
+
+ax <- list(range = c(0,50))
+plot_ly(x=allSolutions$x, y=allSolutions$y, z=allSolutions$z, type = 'scatter3d', mode="markers", marker=list(size = 5)) %>%
+  layout(scene = list(xaxis=ax,yaxis=ax,zaxis=ax))
+```
+
+Here's a fun bonus graph of the function itself, with a resolution of 0.1. Most of these points are meaningless since a rectangular prism can't have a negative value for a side length...yet, but our positive integer solutions are in blue; these include duplicates so there are more. Once again, the graph is absolutely meaningless in answering the question, but it's cool to look at:
+
+```{r, message=FALSE}
+library(plotly)
+
+allSolutions <- data.frame(NA,NA,NA)
+colnames(allSolutions) <- c("x","y","z")
+
+range <- seq(-50,50,0.1)
+
+for (a in range) {
+  for (b in range) {
+    for (c in range) {
+      if ((a*b*c) == (2*((a*b)+(b*c)+(c*a)))) {
+        solution <- c(a,b,c)
+        allSolutions <<- rbind(allSolutions,solution)
+      }
+    }
+  }
+}
+
+allSolutions <- allSolutions[-1,]
+allSolutions <- cbind(allSolutions, NA)
+colnames(allSolutions) <- c("x","y","z","col")
+
+for (rowN in 1:nrow(allSolutions)) {
+  row <- allSolutions[rowN,]
+  if (row[1] %% 1 == 0 && row[2] %% 1 == 0 && row[3] %% 1 == 0) {
+    if (row[1] > 0 && row[2] > 0 && row[3] > 0) {
+      allSolutions[rowN,4] <- "blue"
+    } else {
+      allSolutions[rowN,4] <- "grey50"
+    }
+  } else {
+    allSolutions[rowN,4] <- "grey50"
+  }
+}
+
+plot_ly(x=allSolutions$x, y=allSolutions$y, z=allSolutions$z, type = 'scatter3d', mode="markers", marker=list(size = 2, color = allSolutions$col))
+```
+
+
