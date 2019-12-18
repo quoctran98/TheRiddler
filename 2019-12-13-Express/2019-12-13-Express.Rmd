@@ -1,0 +1,150 @@
+---
+title: "Riddler Express Solution: 1984 World Chess Championship"
+author: "Quoc Tran"
+date: "12/13/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## [Riddler Express](https://fivethirtyeight.com/features/can-you-solve-a-particularly-prismatic-puzzle/)
+
+#### By Zach Wissner-Gross
+
+From Anna Engelsone comes a riddle about a historic chess battle:
+
+The infamous [1984 World Chess Championship](https://www.chess.com/article/view/clash-of-champions-kasparov-karpov) match between the reigning world champion Anatoly Karpov and 21-year-old Garry Kasparov was supposed to have been played until either player had won six games. Instead, it went on for 48 games: Karpov won five, Kasparov won 3, and the other 40 games each ended in a draw. Alas, the match was controversially terminated without a winner.
+
+We can deduce from the games Karpov and Kasparov played that, independently of other games, Karpov’s chances of winning each game were 5/48, Kasparov’s chances were 3/48, and the chances of a draw were 40/48. Had the match been allowed to continue indefinitely, what would have been Kasparov’s chances of eventually winning the match?
+
+***
+
+## My Solution
+
+A [clarification from Twitter](https://twitter.com/xaqwg/status/1205641503487463424?s=20) says that we're keeping the results of the first 48 matches, where Anatoly Karpov had already won five games and Garry Kasparov had already won three. 
+
+Using the general formula for an event with probability $p$ happening exactly $x$ times given $y$ tries: ${ y \choose x} \cdot p^x \cdot (1-p)^{y-x}$, we can derive the expression for the probability of a certain player winning the Championship exactly $x$ games after game 48:
+
+$${ x-1 \choose j-1} \cdot P(W)^{j-1} \cdot (1-P(W))^{(x-1)-(j-1)} \cdot P(W) \cdot (1 - \sum\limits_{x=1}^x { x-1 \choose k-1} \cdot P(L)^{k-1} \cdot (1-P(L))^{(x-1)-(k-1)} \cdot P(L))$$
+
+where $P(W)$ is the probability of a certain player winning one game (and $P(L)$ is their opponent's), and where $j$ is remaning number of wins that player needs to take the Championship (and $k$ is their opponent's)
+
+The first three terms ${ x-1 \choose j-1} \cdot P(W)^{j-1} \cdot (1-P(W))^{x-1-j-1}$ are the probability that the player will be exactly one win from winning and is multiplied by the fourth term $P(W)$, the probability of winning on this exact game. This is the probability that player will reach the number of wins needed to win the championship at game $x$ after game 48.
+
+However, we also need to account for the fact that their opponent could have won before. $\sum\limits_{x=1}^x { x-1 \choose k-1} \cdot P(L)^{k-1} \cdot (1-P(L))^{x-1-k-1} \cdot P(L))$ is the cumulative probability that their opponent has already won the championship by game $x$ after game 48. It is subtracted by $1$ to get the probability that they haven't already won and then multiplied into our expression.
+
+We know that Anatoly Karpov's probability of winning any game is also Garry Kasparov's probability of losing it (a draw doesn't count for either) and vice versa, so $P(W_{A}) = P(L_{G}) = \frac{5}{48}$ and $P(W_{G}) = P(L_{L}) = \frac{3}{48}$, where Anatoly's probability is $P(W_{A})$ and Garry's is $P(W_{G})$.
+
+Anatoly only needs to win one more game after game 48 and Garry needs to win three more, so $j_{A} = k_{G} = 1$ and $j_{G} = k_{A} = 3$.
+
+Find the Garry Kasparov's chances of eventually winning the match is just a matter of plugging in the right variables and summing the exression from one to infinity to find Garry's cumulative probability of fending off Anatoly winning the Championship. I'm not in the mood to do that much math, so I'll just plot the series to 100 games for both players and see when the series converges:
+
+```{r}
+library(ggplot2)
+nGames <- 100
+df <- data.frame(c(1:nGames),rep.int(0,nGames),rep.int(0,nGames),rep.int(0,nGames),rep.int(0,nGames))
+colnames(df) <- c("x","Anatoly","Garry","aIndep","gIndep")
+dfSeries <- df
+pA <- (5/48)
+jA <- 1
+pG <- (3/48)
+jG <- 3
+pD <- (40/48)
+
+for (x in 1:nrow(df)) {
+  garryIndep <- ((choose(x-1,(jG-1))*(pG^(jG-1))*((1-pG)^((x-1)-(jG-1))))*pG)
+  anatolyIndep <- ((choose(x-1,(jA-1))*(pA^(jA-1))*((1-pA)^((x-1)-(jA-1))))*pA)
+  
+  df[x,"gIndep"] <- garryIndep
+  df[x,"aIndep"] <- anatolyIndep
+  
+  df[x,"Garry"] <- (garryIndep * (1-(sum(df[1:x,"aIndep"]))))
+  df[x,"Anatoly"] <- (anatolyIndep * (1-(sum(df[1:x,"gIndep"]))))
+}
+
+for (x in 1:nrow(dfSeries)) {
+  dfSeries[x,"Anatoly"] <- sum(df[1:x,"Anatoly"])
+  dfSeries[x,"Garry"] <- sum(df[1:x,"Garry"])
+}
+
+dfSeries <- rbind(c(0,0,0),dfSeries)
+
+ggplot() +
+  geom_line(data=df, aes(x=x, y=Anatoly, color="Anatoly"), size=2) + 
+  geom_line(data=df, aes(x=x, y=Garry, color="Garry"), size=2) +
+  xlab("Game No. (after 48)") +
+  ylab("Probability of a Championship Win") +
+  labs(colour = "") +
+  coord_trans(y="sqrt")
+
+ggplot() +
+  geom_line(data=dfSeries, aes(x=x, y=Anatoly, color="Anatoly"), size=2) + 
+  geom_line(data=dfSeries, aes(x=x, y=Garry, color="Garry"), size=2) +
+  xlab("Game No. (after 48)") +
+  ylab("Cumulative Probability of a Championship Win") +
+  labs(colour = "") +
+  coord_trans(y="sqrt") +
+  ylim(c(0,1))
+
+print(paste("Garry Kasparov's chances of beating Anatoly Karpov in the Championship converge to ", round(dfSeries$Garry[101], digits=4), ".", sep=""))
+```
+
+We can go further by simulating these games with these same probabilities.
+
+```{r}
+nChamp <- 5000
+
+allGames <- data.frame(0,0,0)
+colnames(allGames) <- c("gamesPlayed", "Anatoly", "Garry")
+
+for (i in 1:nChamp) {
+  aWins <- 5
+  gWins <- 3
+  gamesPlayed <- 0
+  while (aWins != 6 && gWins != 6) {
+    gamesPlayed <- gamesPlayed + 1
+    winner <- sample(c("Anatoly","Garry","tie"), 1, prob=c(pA,pG,pD))
+    if (winner == "Anatoly") {
+      aWins <- aWins + 1
+    } else if (winner == "Garry") {
+      gWins <- gWins + 1
+    }
+  }
+  allGames[i,"gamesPlayed"] <- gamesPlayed
+  if (aWins == 6) {
+    allGames[i,"Anatoly"] <- 1
+    allGames[i,"Garry"] <- 0
+  } else if (gWins == 6){
+    allGames[i,"Anatoly"] <- 0
+    allGames[i,"Garry"] <- 1
+  }
+}
+
+aChamp <- allGames[allGames$Anatoly == 1,"gamesPlayed"]
+gChamp <- allGames[allGames$Garry == 1,"gamesPlayed"]
+
+print(paste("Garry Kasparov was the champion ",((length(gChamp)/nChamp)*100),"% of the time.", sep=""))
+```
+
+This is slightly off from our mathematical model, which isn't a huge surpise considering how bad I am at math, but it's pretty darn close. We can also line up our simulated championship wins as a histogram against our model and it looks really good!
+
+```{r}
+allGamesA <- allGames[allGames$Anatoly == 1,c("gamesPlayed","Anatoly")]
+allGamesG <- allGames[allGames$Garry == 1,c("gamesPlayed","Garry")]
+
+df$AnatolyTemp <- df$Anatoly * nChamp
+df$GarryTemp <- df$Garry * nChamp
+
+ggplot() + 
+  geom_histogram(data=allGamesA, aes(x=gamesPlayed), binwidth=1, fill = "red", alpha = 1) +
+  geom_histogram(data=allGamesG, aes(x=gamesPlayed), binwidth=1, fill = "blue", alpha = 1) +
+  geom_line(data=df, aes(x=x, y=AnatolyTemp, size=1, color="Anatoly"), size=2) + 
+  geom_line(data=df, aes(x=x, y=GarryTemp, color="Garry"), size=2) +
+  xlab("Game No. (after 48)") +
+  ylab(paste("Championship Wins (of ", nChamp,")", sep="")) +
+  labs(colour = "") +
+  coord_trans(y="sqrt")
+```
+
