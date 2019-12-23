@@ -1,0 +1,151 @@
+---
+title: "Riddler Classic Solution: Can You Find A Matching Pair Of Socks?"
+author: "Quoc Tran"
+date: "12/20/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-find-a-matching-pair-of-socks/)
+
+#### By Zach Wissner-Gross
+
+From Kathy Bischoping comes a question we’ve all asked ourselves at one time or another:
+
+I have 10 pairs of socks in a drawer. Each pair is distinct from another and consists of two matching socks. Alas, I’m negligent when it comes to folding my laundry, and so the socks are not folded into pairs. This morning, fumbling around in the dark, I pull the socks out of the drawer, randomly and one at a time, until I have a matching pair of socks among the ones I’ve removed from the drawer.
+
+*On average*, how many socks will I pull out of the drawer in order to get my first matching pair?
+
+(Note: This is different from asking how many socks I must pull out of the drawer to *guarantee* that I have a matching pair. The answer to *that* question, by the [pigeonhole principle](https://medium.com/cantors-paradise/the-pigeonhole-principle-e4c637940619), is 11 socks. This question is instead asking about the *average*.)
+
+*Extra credit*: Instead of 10 pairs of socks, what if I have some large number *N* pairs of socks?
+
+***
+
+## My Solution
+
+For $N$ pairs of socks, the probabiity of *having found* a matching pair of socks after pulling $x$ socks out of the drawer is:
+
+$$f(x) = \frac{x-1}{2N-(x-1)}$$
+The numerator $x-1$ is the number of socks that have already been pulled out of the drawer, while the denominator $2N-(x-1)$ is the number of socks left in the drawer. 
+
+The truth is I don't really know where to go from here, but playing around with our first equation and my computer I was was able to find that the *probability distribution* of finding a matching pair on sock $x$ pulled from the drawer for $N$ pairs of socks was:
+
+$$f(x) = \frac{x-1}{2N-(x-1)} \cdot (1 - \sum\limits_{n=1}^{x-1}f(n))$$
+
+The only way I found this was playing around the the function until it matched the simulations, so I'm not actually able to completely explain why I need to recursively apply the function or even how to solve this distribution for an average, but it matches my simulations pretty well.
+
+We can run a few thousand trials to find our actual answer and plot our probability distribution (multiplied by the number of runs) against the histogram of our simulation runs and find the average number of socks needed to get a matching pair.
+
+```{r, message=FALSE}
+library(ggplot2)
+nruns <- 5000
+pairs <- 10
+# Calculating our probability distribution
+df <- data.frame(0,0)
+colnames(df) <- c("x","y")
+func <- function (x, N) {
+  indep <- ((x-1)/(2*N-(x-1)))
+  return(indep * (1-(sum(df[1:(x-1),"y"]))))
+}
+for (x in 1:(pairs+2)) {
+  df[x,"x"] <- x
+  df[x,"y"] <- func(x,pairs)
+}
+# Simulating the sock pulling
+allRuns <- c()
+for (run in 1:nruns) {
+  sockDrawer <- c(1:pairs,1:pairs)
+  sockHand <- c()
+  sockMatch <- FALSE
+  i <- 0
+  while (sockMatch != TRUE) {
+    i <<- i + 1
+    sock <- sample(sockDrawer,1)
+    sockDrawer <<- sockDrawer[-match(sock,sockDrawer)]
+    if (sock %in% sockHand) {
+      sockMatch <<- TRUE
+    } else {
+      sockHand <<- c(sockHand,sock)
+    }
+  }
+  allRuns <- c(allRuns,i)
+}
+# Normalizing the probability distribution and plotting the distributions
+df$y <- df$y * nruns
+dfSim <- data.frame(allRuns)
+ggplot() +
+  geom_histogram(data=dfSim, aes(x=allRuns),col="gray60",fill="gray60", binwidth=1) +
+  geom_line(data=df, aes(x=x,y=y), size = 2, alpha = 0.75) +
+  xlab("Number of socks pulled from drawer") +
+  ylab(paste("Norm. prob. of matching pair (of",nruns,"trials)")) +
+  geom_vline(xintercept=mean(allRuns), size = 2)
+
+print(paste("The average number of needed to be pulled from the drawer until we got a matching pair was",mean(allRuns),"socks."))
+```
+
+We have our answer, but I'm a real go-getter, so let's do the extra credit. This will be pretty difficult with my lack of math knowledge, so let's use a Monte Carlo method (read: throw my computer at it and see what works) to find a generaliziable solution for $N$ pairs of socks (because some of us don't own exactly 10 pairs of unqiue socks and we're here to provide practical solutions, of course).
+
+We can siumate a thousand runs each for 1 to 100 pairs of socks. From looking at it, the curve looks like an $f(x) = \sqrt{x}$ function, so we can fit a square root model to our points and find the coefficients of our curve.
+
+```{r}
+# Simulating 1000 runs for 1 to 100 pairs of socks
+df <- data.frame(0,0,0)
+colnames(df) <- c("pairs","mean","stdev")
+for (pairs in 1:100) {
+  allRuns <- c()
+  for (run in 1:1000) {
+    sockDrawer <- c(1:pairs,1:pairs)
+    sockHand <- c()
+    sockMatch <- FALSE
+    i <- 0
+    while (sockMatch != TRUE) {
+      i <<- i + 1
+      sock <- sample(sockDrawer,1)
+      sockDrawer <<- sockDrawer[-match(sock,sockDrawer)]
+      if (sock %in% sockHand) {
+        sockMatch <<- TRUE
+      } else {
+        sockHand <<- c(sockHand,sock)
+      }
+    }
+    allRuns <- c(allRuns,i)
+  }
+  row <- c(pairs,mean(allRuns),sd(allRuns))
+  df <- rbind(df,row)
+}
+# Fitting to a square root model
+sqrtEstimate <- lm(mean~sqrt(pairs),data=df)
+coef(sqrtEstimate)
+```
+
+The `sqrt(pairs)` coefficient looks suspiciously close to $\sqrt{\pi}$ and the intercept is pretty unreliable given the amount of noise we have, so we can just ignore that.
+
+```{r}
+func <- function(N) {
+  return((sqrt(pi * N)))
+}
+
+dfCurve <- data.frame(0,0)
+colnames(dfCurve) <- c("x","y")
+for (x in 1:100) {
+  dfCurve[x,"x"] <- x
+  dfCurve[x,"y"] <- func(x)
+}
+
+ggplot() +
+  geom_point(data=df, aes(x=pairs,y=mean)) +
+  geom_line(data=dfCurve, aes(x=x,y=y),size = 2, alpha = 0.5) +
+  xlab("Pairs of socks (N)") +
+  ylab("Average number of pulls until matching pair")
+
+```
+
+That model looks like it fits pretty well. Well enough that I can accept that the average number of socks needed to be pulled until we get a matching pair for $N$ pairs of socks is equal to:
+
+$$\sqrt{\pi N}$$
+
+Why it's equal to that? I have no idea.
