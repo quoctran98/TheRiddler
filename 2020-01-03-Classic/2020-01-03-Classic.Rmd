@@ -1,0 +1,237 @@
+---
+title: "Riddler Classic Solution: Can You Solve The Vexing Vexillology?"
+author: "Quoc Tran"
+date: "01/03/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-solve-the-vexing-vexillology/)
+
+#### By Zach Wissner-Gross
+
+The New York Times recently launched some new word puzzles, one of which is [Spelling Bee.](https://www.nytimes.com/puzzles/spelling-bee) In this game, seven letters are arranged in a honeycomb lattice, with one letter in the center. Here’s the lattice from December 24, 2019:
+
+![](https://fivethirtyeight.com/wp-content/uploads/2020/01/Screen-Shot-2019-12-24-at-5.46.55-PM.png?w=1136)
+
+The goal is to identify as many words that meet the following criteria:
+
+The word must be at least four letters long.
+The word must include the central letter.
+The word cannot include any letter beyond the seven given letters.
+Note that letters can be repeated. For example, the words GAME and AMALGAM are both acceptable words. Four-letter words are worth 1 point each, while five-letter words are worth 5 points, six-letter words are worth 6 points, seven-letter words are worth 7 points, etc. Words that use *all* of the seven letters in the honeycomb are known as “pangrams” and earn 7 bonus points (in addition to the points for the length of the word). So in the above example, MEGAPLEX is worth 15 points.
+
+Which seven-letter honeycomb results in the highest possible game score? To be a valid choice of seven letters, no letter can be repeated, it must not contain the letter S (that would be too easy) and there must be at least one pangram.
+
+For consistency, please use [this word list](https://norvig.com/ngrams/enable1.txt) to check your game score.
+
+***
+
+## My Solution
+
+The most straightforward approach seems to just be brute forcing the problem, but we should constrain the problem to save computation time. We should first import the list of words, filter out words that have an 's' and those that aren't scorable (with less than 4 letters or more than 7 unique ones), label which ones are pangrams, and score each word.
+
+```{r}
+library(stringr)
+library(ggplot2)
+words <- scan("words.txt", what="char", skipNul=TRUE)
+
+words <- words[!str_detect(words, "s")]
+words <- words[nchar(words) >= 4]
+uniqueLetters <- function(word) {sum(!!str_count(word, letters))}
+
+words <- data.frame(words, sapply(words, uniqueLetters), nchar(words), stringsAsFactors = FALSE)
+colnames(words) <- c("word", "letters", "score")
+rownames(words) <- 1:nrow(words)
+
+# The words "true" and "false" are read as logicals.
+words[words$word==TRUE,] <- c("true",4,4) 
+words[words$word==FALSE,] <- c("false",5,5)
+
+words$letters <- as.numeric(words$letters)
+words <- words[words$letters <= 7,]
+
+words$pangram <- FALSE
+words[words$letters == 7,"pangram"] <- TRUE
+
+words[words$score == 4,"score"] <- 1
+words[words$pangram == TRUE,"score"] <- as.numeric(words[words$pangram == TRUE,"score"]) + 7
+
+words$score <- as.numeric(words$score)
+head(words)
+```
+
+We can then add columns for whether or not each letter of the alphabet appears in the word. This will allow to more quickly check to see if a word can be spelled using a certain honeycomb.
+
+```{r}
+for (letter in letters) {
+  words[,letter] <- str_detect(words$word,letter)
+}
+rm(letter)
+```
+
+We can then write a function to score each pangram using our filtered and labeled word list. I'm sure there's a much faster way to score it, but at least it's not as slow as my first method, which took around 4 seconds per pangram...
+
+```{r}
+score <- function(centerLetter, otherLetters) {
+  tempWords <- words[words[,centerLetter]==TRUE,]
+  tempLetters <- letters
+  tempLetters <- tempLetters[tempLetters != centerLetter]
+  for (letter in otherLetters) {
+    tempLetters <- tempLetters[tempLetters != letter]
+  }
+  tempWords$otherLetters <- tempWords[,tempLetters]
+  tempWords <- tempWords[(rowSums(tempWords[,tempLetters]) == 0),]
+  return(sum(tempWords$score))
+}
+```
+
+To narrow our search space, since we know that each honeycomb must contain a pangram to be valid, we can generate all the possible honeycombs from our list of pangrams each with a different center letter.
+
+```{r}
+honeycombs <- c()
+for (pangram in words[words$pangram == TRUE,"word"]) {
+  honeycombs <- c(honeycombs,
+                  str_c(letters[!!str_count(pangram,letters)],collapse=""))
+}
+rm(pangram)
+
+honeycombs <- unique(honeycombs)
+allHoneycombs <- c()
+for(honeycomb in honeycombs) {
+  honeycomb <- unlist(str_split(honeycomb,""))
+  for (letter in 1:length(honeycomb)) {
+    allHoneycombs <- c(allHoneycombs, 
+                       str_c(c(honeycomb[letter], honeycomb[-letter]), collapse=""))
+  }
+}
+rm(honeycomb)
+rm(letter)
+honeycombs <- allHoneycombs
+rm(allHoneycombs)
+
+print(paste("There are", length(honeycombs), "unique honeycombs that can produce at least one pangram."))
+```
+
+Now, we can just iterate through each honeycomb and score it. I ran this previously and it took around half an hour, so we'll just skip running it and import that csv file.
+
+```{r}
+honeycombScores <- data.frame(honeycombs,0)
+colnames(honeycombScores) <- c("honeycomb","score")
+```
+
+```{r, eval=FALSE}
+for (row in match(0,honeycombScores$score):nrow(honeycombScores)) { # Allows us to continue where we left off
+  hc <- honeycombScores[row,"honeycomb"]
+  hcSplit <- unlist(str_split(hc,""))
+  honeycombScores[row,"score"] <- score(hcSplit[1],hcSplit[-1])
+  print((row/nrow(honeycombScores))*100)
+}
+rm(hc)
+rm(hcSplit)
+rm(row)
+write.csv(honeycombScores, "honeycombScores.csv")
+```
+
+```{r}
+honeycombScores <- read.csv("honeycombScores.csv", row.names=1)
+
+print(paste("The highest scoring pangram is '",
+            as.character(honeycombScores[honeycombScores$score == max(honeycombScores$score),"honeycomb"]), 
+            "' with '",
+            substr(as.character(honeycombScores[honeycombScores$score == max(honeycombScores$score),"honeycomb"]),1,1),
+            "' as the center letter. This pangram scores ",
+            max(honeycombScores$score),
+            " points!",
+            sep = ""))
+```
+
+Getting the answer is great in all and I learned a lot about code optimization, but solving this Riddler brought up another question:
+
+### What properties of a honeycomb best predicts its score?
+
+We can use our list of honeycomb scores to test a few hypotheses:
+
+#### 1. Combined letter frequency
+
+We could use this list of [letter frequency on Wikipedia](https://en.wikipedia.org/wiki/Letter_frequency), but that captures the frequency each letter is actually used in the english language, which turns out to be very different from our word list that includes words like "aahed" and "zyzzyva"...
+
+We can instead use our table of words to see how often a letter appears in a word. We can then use that to see how well the combined letter frequency of a honeycomb predicts its score.
+
+```{r}
+letterFreq <- data.frame(letters,0)
+colnames(letterFreq) <- c("letter","frequency")
+
+for (row in 1:nrow(letterFreq)) {
+  letterFreq[row,"frequency"] <- sum(words[,as.character(letterFreq[row,"letter"])])
+}
+rm(row)
+
+letterFreq$frequency <- (letterFreq$frequency/sum(letterFreq$frequency))*100
+rownames(letterFreq) <- letterFreq$letter
+```
+
+```{r}
+honeycombFreq <- honeycombScores
+
+for (row in 1:nrow(honeycombFreq)) {
+  honeycombFreq[row,"frequency"] <- sum(letterFreq[unlist(str_split(honeycombFreq[row,"honeycomb"],"")),"frequency"])
+}
+rm(row)
+
+ggplot(honeycombFreq) +
+  geom_point(aes(x=frequency,y=score)) +
+  xlab("Combined Letter Frequency (%)") +
+  ylab("Honeycomb Score")
+
+summary(lm(score ~ frequency, data = honeycombFreq))
+```
+
+#### 2. Center letter frequency
+
+Combined letter frequency has some predictive power in determining the honeycomb score, but it's not perfect. This is probably because some of the most common letters are vowels, but you'd be hard pressed to make a word with only vowels.
+
+Since the center letter must be included in every word, maybe the frequency of that letter might help us predict the honeycomb score.
+
+```{r}
+honeycombFreq <- honeycombScores
+
+for (row in 1:nrow(honeycombFreq)) {
+  honeycombFreq[row,"frequency"] <- letterFreq[unlist(str_split(honeycombFreq[row,"honeycomb"],"")),"frequency"][1]
+}
+rm(row)
+
+ggplot(honeycombFreq) +
+  geom_point(aes(x=frequency,y=score)) +
+  xlab("Center Letter Frequency (%)") +
+  ylab("Honeycomb Score")
+
+summary(lm(score ~ frequency, data = honeycombFreq))
+```
+
+#### 3. Least Frequent Letter
+
+The center letter of a honeycomb is overall a weak predictor of honeycomb score. This makes sense, since even if the a very common letter is surrounded by rarely-used letters the score won't be very high. 
+
+What if the least frequent letter in the honeycomb best predicts the score?
+
+```{r}
+honeycombFreq <- honeycombScores
+
+for (row in 1:nrow(honeycombFreq)) {
+  honeycombFreq[row,"frequency"] <- min(letterFreq[unlist(str_split(honeycombFreq[row,"honeycomb"],"")),"frequency"])
+}
+rm(row)
+
+ggplot(honeycombFreq) +
+  geom_point(aes(x=frequency,y=score)) +
+  xlab("Least Frequent Letter Freq. (%)") +
+  ylab("Honeycomb Score")
+
+summary(lm(score ~ frequency, data = honeycombFreq))
+```
+
+The best predictor of honeycomb score seems to be the combined letter frequency of the honeycomb, although it's not a great one, with the R-squared value only being 0.4367
