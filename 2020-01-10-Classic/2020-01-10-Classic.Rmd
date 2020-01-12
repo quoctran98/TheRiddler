@@ -1,0 +1,114 @@
+---
+title: "Riddler Classic Solution: Can You Find A Number Worth Its Weight In Letters?"
+author: "Quoc Tran"
+date: "01/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-find-a-number-worth-its-weight-in-letters/)
+
+#### By Zach Wissner-Gross
+
+From Leonard Cohen comes a puzzle at the intersection of language and mathematics:
+
+In Jewish study, [“Gematria” is an alphanumeric code](https://www.myjewishlearning.com/article/gematria/) where words are assigned numerical values based on their letters. We can do the same in English, assigning 1 to the letter A, 2 to the letter B, and so on, up to 26 for the letter Z. The value of a word is then the sum of the values of its letters. For example, RIDDLER has an alphanumeric value of 70, since R + I + D + D + L + E + R becomes 18 + 9 + 4 + 4 + 12 + 5 + 18 = 70.
+
+But what about the values of different numbers themselves, spelled out as words? The number 1 (ONE) has an alphanumeric value of 15 + 14 + 5 = 34, and 2 (TWO) has an alphanumeric value of 20 + 23 + 15 = 58. Both of these values are bigger than the numbers themselves.
+
+Meanwhile, if we look at larger numbers, 1,417 (ONE THOUSAND FOUR HUNDRED SEVENTEEN) has an alphanumeric value of 379, while 3,140,275 (THREE MILLION ONE HUNDRED FORTY THOUSAND TWO HUNDRED SEVENTY FIVE) has an alphanumeric value of 718. These values are much smaller than the numbers themselves.
+
+If we consider all the whole numbers that are *less than* their alphanumeric value, what is the largest of these numbers?
+
+***
+
+## My Solution
+
+Apparently, there's no easy R package that includes a function to easily convert words into their numbers. There are few versions of these functions floating around online, but it might be fun to create our own function.
+
+```{r}
+# No leading zeroes please
+num2word <- function (num) {
+  if (num == 0) {return("zero")}
+  ones <- c("one","two","three","four","five","six","seven","eight","nine")
+  tens <- c("ten","twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety")
+  teens <- c("eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen")
+  bigboys <- c("hundred","thousand","million","billion","trillion","quadrillion","quinitillion","sextillion","septillion")
+  num2hundred <- function (hundredNum) {
+    if (hundredNum == 0) {
+      return("")
+    } else if (hundredNum < 10) {
+      return(ones[hundredNum])
+    } else if (hundredNum == 10) {
+      return("ten")
+    } else if (hundredNum < 20) {
+      return(teens[hundredNum %% 10])
+    } else if (hundredNum < 100) {
+      return(paste(tens[floor(hundredNum / 10)], 
+                   ones[hundredNum %% 10]))
+    } else {
+      return(paste(ones[floor(hundredNum / 100)],
+                   "hundred",
+                   tens[floor((hundredNum %% 100) / 10)], 
+                   ones[hundredNum %% 10]))
+    }
+  }
+  numLeftover <- as.character(num)
+  word <- "" 
+  for (i in 1:ceiling(log10(num+1)/3)) {
+    currNum <- as.numeric(substr(numLeftover, nchar(numLeftover)-2, nchar(numLeftover)))
+    numLeftover <- substr(numLeftover, 0, nchar(numLeftover)-3)
+    if (i == 1) {
+      word <- num2hundred(currNum)
+    } else {
+      word <- paste(num2hundred(currNum), bigboys[i], word)
+    }
+  }
+  return(word)
+}
+```
+
+That was honestly a pretty fun function to write and it went surprisingly smoothly. From here, we can just write a simple function to find the "gematria score" of a word.
+
+```{r}
+library(stringr)
+gematriaScore <- function(word) {
+  word <- str_replace_all(word," ","")
+  return(sum(match(unlist(str_split(word,"")),letters)))
+}
+```
+
+If we apply these functions to a range of numbers, then we get our answer.
+
+```{r}
+numbers <- 0:500
+gScore <- sapply(numbers,num2word)
+gScore <- sapply(gScore,gematriaScore)
+
+print(paste("The largest number that's still less than its alphanumeric value is",
+            max(numbers[numbers < gScore]),
+            "with a value of",
+            gScore[max(numbers[numbers < gScore])]))
+
+```
+
+It looks pretty cool as well if we plot all the points against a line with a slope of one (where the gematria score equals the value of the number). 279 is in blue.
+
+```{r}
+library(ggplot2)
+df <- data.frame(numbers,gScore)
+
+df[df$numbers==279,"color"] <- "blue"
+df[df$numbers!=279,"color"] <- "gray"
+
+ggplot(df) +
+  geom_point(aes(x=numbers,y=gScore),col=df$color) +
+  geom_line(aes(x=numbers,y=numbers)) +
+  geom_label(label = "'two hundred seventy nine'", x=279, y=291+20) +
+  xlab("Number") +
+  ylab("'Gematria Score'") +
+  ylim(c(0,330))
+```
