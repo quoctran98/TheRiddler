@@ -1,0 +1,33 @@
+---
+title: "Riddler Express Solution: New Year Fractions"
+author: "Quoc Tran"
+date: "01/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-find-a-number-worth-its-weight-in-letters/)
+
+#### By Zach Wissner-Gross
+
+To celebrate the new year, here’s a quick puzzle about the number 2020. Of all the fractions out there that are greater than 1/2020 but less than 1/2019, one has the smallest denominator. Which fraction is it?
+
+(Before you ask, by “fraction” I mean that both the numerator and denominator should be whole numbers.)
+
+***
+
+## My Solution
+
+```{r}
+for (den in 1:10000) {
+  for (num in 1:den) {
+    if (((num/den) < (1/2019)) && ((num/den) > (1/2020))) {
+      print(paste(num,"/",den))
+    }
+  }
+}
+```
+

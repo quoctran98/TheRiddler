@@ -1,0 +1,84 @@
+---
+title: "Riddler Classic Solution: Can You Track The Delirious Ducks?"
+author: "Quoc Tran"
+date: "01/17/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-track-the-delirious-ducks/)
+
+#### By Zach Wissner-Gross
+
+After a long night of frivolous quackery, two delirious ducks are having a difficult time finding each other in their pond. The pond happens to contain a 3×3 grid of rocks.
+
+Every minute, each duck randomly swims, independently of the other duck, from one rock to a neighboring rock in the 3×3 grid — up, down, left or right, but not diagonally. So if a duck is at the middle rock, it will next swim to one of the four side rocks with probability 1/4. From a side rock, it will swim to one of the two adjacent corner rocks or back to the middle rock, each with probability 1/3. And from a corner rock, it will swim to one of the two adjacent side rocks with probability 1/2.
+
+If the ducks both start at the middle rock, then on average, how long will it take until they’re at the same rock again? (Of course, there’s a 1/4 chance that they’ll swim in the same direction after the first minute, in which case it would only take one minute for them to be at the same rock again. But it could take much longer, if they happen to keep missing each other.)
+
+*Extra credit*: What if there are three or more ducks? If they all start in the middle rock, on average, how long will it take until they are all at the same rock again?
+
+***
+
+## My Solution
+
+Clearly the mathematical solution to this problem involves the use of Markov chains, but they didn't invent computers for nothing.
+
+```{r}
+library(stringr)
+
+# (1,3) (2,3) (3,3)
+# (1,2) (2,2) (3,2)
+# (1,1) (2,1) (3,1)
+
+moveDuck <- function (start) {
+  
+  end <- start
+  moveAxis <- sample(c(1, 2), 1)
+
+  if (start[moveAxis] != 2) {
+    end[moveAxis] <- 2
+  } else {
+    end[moveAxis] <- sample(c(1, 3), 1)
+  }
+  
+  return(end)
+}
+
+simLength <- c()
+simMeet <- c()
+simLog <- list()
+
+for (i in 1:10000) {
+  duck1 <- c(2,2)
+  duck2 <- c(2,2)
+  duckMeet <- FALSE
+  minutes <- 1
+  while (!duckMeet) {
+    minutes <- minutes + 1
+    duck1 <- moveDuck(duck1)
+    duck2 <- moveDuck(duck2)
+    duckMeet <- !(FALSE %in% (duck1 == duck2))
+  }
+  simLength <- c(simLength, minutes)
+  simMeet <- c(simMeet, str_c(duck1, collapse = ""))
+}
+
+print(paste("It takes the ducks an average of", mean(simLength), "minutes to meet."))
+```
+
+```{r}
+library(ggplot2)
+
+ggplot() + 
+  aes(simLength) + 
+  geom_histogram(binwidth=1, color = "black", fill = "yellow") +
+  ylab("Frequency (of 10,000 simulations)") +
+  xlab("Minutes Until the Ducks Meet") +
+  ggtitle("We Can Track The Delirious Ducks!") +
+  theme_bw()
+```
+
