@@ -84,8 +84,16 @@ vol <- function(n, a = 1) {
 
 df <- data.frame(x = 3:11, y = vol(3:11))
 
-m
+ggplot(df, aes(x=x, y=y)) +
+  geom_point() + 
+  geom_line() +
+  ylab("Relative Volume of Pyramid") +
+  scale_x_discrete(name = "Number of Magna-Tiles", limits = 3:11) +
+  ggtitle("Volume of Pyramid formed by n Magna-Tiles")
 
 ```
 
 A pyramid created from 9 Magna-Tiles will have the maximum volume.
+
+
+
