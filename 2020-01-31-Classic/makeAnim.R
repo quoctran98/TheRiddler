@@ -24,6 +24,7 @@ dfOpt <- dfOpt[-1,]
 for (magnaN in 4:50) {
   x <- 3:(magnaN-1)
   y <- vol(x, N = magnaN)
+  y <- y - min(y)
   N <- rep.int(magnaN, length(x))
   
   dfTemp <- data.frame("x" = x, "y" = y, "N" = N)
@@ -44,12 +45,15 @@ for (i in unique(df$N)) {
     geom_line(data = df[df$N <= i,], aes(x=x, y=y, color=(N), group=N)) +
     geom_point(data = dfOpt[dfOpt$N <= i,], aes(x=x, y=y)) +
     geom_smooth(data = dfOpt, aes(x=x, y=y), se=FALSE) +
+    geom_text(data = df[df$N <= i,], aes(x=x, y=y, label=ifelse(x==max(x), paste("N =", x + 1), "")), hjust = -2, vjust = -10) +
+    geom_text(data = dfOpt[dfOpt$N <= i,], aes(x=x, y=y, label=ifelse(y==max(y), paste("Optimal number of Magna-Tiles =", x), "")), hjust = -2, vjust = -10) +
     xlim(c(2, xmax)) +
     ylim(c(0, ymax)) +
     xlab("Number of Magna-Tiles") +
-    ylab("Relative Volume of Pyramid") + 
+    ylab("Normalized Pyramid Volume") + 
     labs(title = paste("Optimal Pyramid with Variable Sized Magna-Tiles (N: 4 to ", i, ")", sep = ""),
          subtitle = "where N is the number of Magna-Tiles needed to form a flat regular polygon") +
-    theme(legend.position="none")
+    theme(axis.text.x=element_blank(),
+          legend.position="none")
   ggsave(paste("./anim/", i, ".png", sep = ""))
 }
