@@ -1,0 +1,51 @@
+---
+title: "Riddler Classic Solution: How Many More Palindrome Dates Will You See?"
+author: "Quoc Tran"
+date: "02/07/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/how-many-more-palindrome-dates-will-you-see/)
+
+#### By Zach Wissner-Gross
+
+Also on Super Bowl Sunday, math professor Jim Propp made a rather interesting observation:
+
+https://twitter.com/JimPropp/status/1224177172362989571?s=20
+
+At first glance, this might look like one of those annoying memes about order of operations that [goes viral every few years](https://www.nytimes.com/2019/08/02/science/math-equation-pedmas-bemdas-bedmas.html) — but it’s not.
+
+When you write lengthy mathematical expressions using parentheses, it’s always clear which “open” parenthesis corresponds to which “close” parenthesis. For example, in the expression (1+2(3−4)+5), the closing parenthesis after the 4 pairs with the opening parenthesis before the 3, and not with the opening parenthesis before the 1.
+
+But pairings of other mathematical symbols can be more ambiguous. Take the absolute value symbols in Jim’s example, which are vertical bars, regardless of whether they mark the opening or closing of the absolute value. As Jim points out, |−1|−2|−3| has two possible interpretations:
+
+The two left bars are a pair and the two right bars are a pair. In this case, we have 1−2·3 = 1−6 = −5.
+The two outer bars are a pair and the two inner bars are a pair. In this case, we have |−1·2−3| = |−2−3| = |−5| = 5.
+Of course, if we gave each pair of bars a different height (as is done in mathematical typesetting), this wouldn’t be an issue. But for the purposes of this problem, assume the bars are indistinguishable.
+
+How many different values can the expression |−1|−2|−3|−4|−5|−6|−7|−8|−9| have?
+***
+
+## My Solution
+
+I want to first figure out, for each number of sets absolute value signs, how many combinations of interpreting those signs there can be. This might or might not be our final answer, since we're currently ignoring the values inside the absolute value signs.
+
+For $0$ sets of absolute value signs: $a$, there is only $1$ interpretation of the expression.
+
+For $1$ set of absolute value signs: $|a|$, there is only $1$ interpretation of the expression.
+
+For $2$ set of absolute value signs: $|a|b|c|$, there are $2$ interpretations of the expression, as the example in the question points out.
+
+For $3$ set of absolute value signs: $|a|b|c|d|e|$, it gets kind of confusing. 
+
+$|a| \cdot b \cdot |c| \cdot d \cdot |e|$
+
+$|a \cdot |b| \cdot c \cdot |d| \cdot e|$
+
+$|a| \cdot b \cdot |c| \cdot |d| \cdot e$
+
+$|a \cdot |b| \cdot c| \cdot |d| \cdot e$

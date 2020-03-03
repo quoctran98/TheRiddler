@@ -1,0 +1,113 @@
+---
+title: "Riddler Classic Solution: Can You Flip Your Way To Victory?"
+author: "Quoc Tran"
+date: "02/21/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-flip-your-way-to-victory/)
+
+#### By Zach Wissner-Gross
+
+From Abijith Krishnan comes a game of coin flipping madness:
+
+You have two fair coins, labeled A and B. When you flip coin A, you get 1 point if it comes up heads, but you lose 1 point if it comes up tails. Coin B is worth twice as much — when you flip coin B, you get 2 points if it comes up heads, but you lose 2 points if it comes up tails.
+
+To play the game, you make a total of 100 flips. For each flip, you can choose either coin, and you know the outcomes of all the previous flips. In order to win, you must finish with a positive total score. In your eyes, finishing with 2 points is just as good as finishing with 200 points — any positive score is a win. (By the same token, finishing with 0 or −2 points is just as bad as finishing with −200 points.)
+
+If you optimize your strategy, what percentage of games will you win? (Remember, one game consists of 100 coin flips.)
+
+*Extra credit*: What if coin A isn’t fair (but coin B is still fair)? That is, if coin A comes up heads with probability p and you optimize your strategy, what percentage of games will you win?
+
+***
+
+## My Solution
+
+The optimal strategy intuitively seems to be use the safe coin (coin A) when you want to keep your score and the danger coin (coin B) when you need to change your score. Now the question then becomes when is our score low enough to use the danger coin -- where is our danger threshold?
+
+Let's not kid ourselves, we're gonna Monte-Carlo this sooner or later, so we can write a quick function to play the game for us:
+
+```{r}
+playGame <- function (dangerThreshold) {
+  score <- 0
+  for (flips in 1:100) {
+    if (score < dangerThreshold) {
+      score <- score + sample(c(2,-2), 1)
+    } else {
+      score <- score + sample(c(1,-1), 1)
+    }
+  }
+  ifelse(score > 0, return(TRUE), return(FALSE))
+}
+```
+
+We can then simulate a couple thousand games at each danger thresholds to see which danger threshold results in the higest win probability.
+
+```{r}
+df <- data.frame(dangerThreshold = -100:100, winProb = 0)
+for (row in 1:nrow(df)) {
+  dT <- df[row, "dangerThreshold"]
+  results <- c()
+  for (i in 1:2000) {
+    results <- c(results, playGame(dT))
+  }
+  df[row, "winProb"] <- mean(results)
+}
+```
+
+Plotting the results, it's clear that the best danger threshold is somwhere around 0, though our results are too noisy to exactly determine the exact best danger threshold. It looks like our best danger threshold is $score < 1$, but we may have to solve this analytically.
+
+```{r}
+library(ggplot2)
+df$winProb <- df$winProb * 100
+ggplot(df) +
+  geom_point(aes(x=dangerThreshold, y=winProb)) +
+  xlab("Score Threshold to Use the 'Danger Coin'") +
+  ylab("Win Probability (%)")
+  
+```
+
+This game can be described as a markov chain where each possible score is a different state and the possible transitions are determined by whether the danger coin is used.
+
+```{r}
+library(markovchain)
+
+markovMatrix <- function (dangerThreshold) {
+  maxScore <- 100
+  minScore <- -200
+  if (dangerThreshold > 0) {
+    maxScore <- maxScore + ceiling(dangerThreshold / 2)
+  } else if (dangerThreshold < 0) {
+    minScore <- minScore + dangerThreshold
+  }
+  mMatrix <- matrix(0, nrow = (abs(minScore) + maxScore + 1), ncol = (abs(minScore) + maxScore + 1))
+  colnames(mMatrix) <- minScore:maxScore
+  rownames(mMatrix) <- minScore:maxScore
+  
+  for (row in rownames(mMatrix)) {
+    for (col in colnames(mMatrix)) {
+      rowN <- as.numeric(row)
+      colN <- as.numeric(col)
+      if (rowN < dangerThreshold) {
+        if (abs(rowN - colN) == 2) {
+          mMatrix[row, col] <- 0.5
+        }
+      } else {
+        if (abs(rowN - colN) == 1) {
+          mMatrix[row, col] <- 0.5
+        }
+      }
+    }
+  }
+  mMatrix <<- mMatrix
+}
+```
+
+I've made a function for creating the transition matrix for a specific danger threshold, but now I'm stuck. I don't know enough math to solve this.
+
+I guess our best strategy is using the danger coin if the score is less than 1, and using the safe coin otherwise.
+
