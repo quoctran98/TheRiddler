@@ -1,0 +1,49 @@
+---
+title: "Riddler Classic Solution: Can You Get Another Haircut Already?"
+author: "Quoc Tran"
+date: "03/13/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Express](https://fivethirtyeight.com/features/can-you-get-another-haircut-already/)
+
+#### By Zach Wissner-Gross
+
+Most people will tell you that a kilobyte is 1,000 bytes, that a megabyte is 1,000,000 bytes and that a gigabyte is 1,000,000,000 bytes. But that’s not quite right — a kilobyte is in fact 1,024, or $2^{10}$, bytes. A megabyte is 1,048,576, or $2^{20}$, bytes. A gigabyte is 1,073,741,824, or $2^{30}$, bytes.
+
+While these aren’t whole number powers of 10, they’re all pretty close. And that’s thanks to the happy coincidence that there’s a power of two that’s very close to 1,000. Working through the numbers, $2^{10}$ is a mere 2.4 percent more than $10^3$.
+
+But surely there are other, higher powers of 2 that are even closer to a power of 10. After $2^{10}$, what’s the next (whole number) power of 2 that comes closer to a power of 10? (To be clear, “closer” doesn’t refer to the absolute difference — it means your power of 2 should differ from a power of 10 by less than 2.4 percent.)
+
+***
+
+## My Solution
+
+Just some code and a cool plot, I guess...
+
+```{r}
+library(ggplot2)
+
+df <- data.frame(x = 0:1000)
+df$y <- 2^df$x
+df$close10 <- 10^(round(log10(df$y) - log10(5.5) + 0.5))
+df$diff <- (df$y - df$close10) / df$close10
+df$diff <- df$diff * 100
+
+ggplot(df[1:200,]) +
+  geom_line(aes(x = x, y = diff)) +
+  geom_point(aes(x = x, y = diff,
+                 col = ifelse(abs(diff) <= 2.4, 1, 0))) +
+  #geom_vline(xintercept = c(39, 133, 226, 329, 421, 524, 617)) +
+  xlab("Power of 2") +
+  ylab("Percent Change from Nearest Power of 10") +
+  theme(legend.position="none")
+
+df[abs(df$diff) <= 2.4,"x"]
+```
+
+There's obviously a pattern and an analytical solution here but how am I supposed to figure out?

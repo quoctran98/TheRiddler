@@ -1,0 +1,96 @@
+---
+title: "Riddler Classic Solution: Can You Get Another Haircut Already?"
+author: "Quoc Tran"
+date: "03/13/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-get-another-haircut-already/)
+
+#### By Zach Wissner-Gross
+
+Sticking with the board game theme, from Andrew Lin comes a closer examination of a classic game of reasoning and elimination:
+
+This week’s Riddler Classic is a new take on a recent puzzle. [Two weeks ago](https://fivethirtyeight.com/features/can-you-get-a-haircut-already/), you were waiting in line at a barbershop. There were four barbers working simultaneously, and each haircut took exactly 15 minutes. There were almost always one or more customers waiting their turn on a first-come, first-served basis.
+
+Being a regular, you preferred to get your hair cut by the owner, Tiffany. If one of the other three chairs opened up, and it was your turn, you would have said, “No thanks, I’m waiting for Tiffany.” The person behind you in line would then be offered the open chair, and you’d remain at the front of the line until Tiffany became available.
+
+Unfortunately, you weren’t alone in requesting Tiffany. In general, a quarter of the other customers were expected to hold out for Tiffany, while no one held out for any of the other barbers. The question was then, if you had one person in line ahead of you, and the four barbers were independently at random places in their respective haircuts, how long would you expect to wait until your haircut?
+
+While [last week’s solution](https://fivethirtyeight.com/features/how-good-are-you-at-guess-who/) explored some interesting mathematics, it made a critical assumption: that the person in front of you had a 25 percent chance of waiting for Tiffany. But as it turns out, this was not a reasonable deduction to make. And so, for this week’s Classic, you are being asked to analyze a more specific statement of the original problem.
+
+Suppose all of Riddler City, with its incredibly vast population (25 percent of whom will wait for Tiffany), decides to get a haircut at this barbershop one fine morning, and everyone lines up at its entrance in a random order a few minutes before the shop opens at 8 a.m. After opening, the four barbers will start cutting hair for their first customers at random times between 8 a.m. and 8:15 a.m. Each haircut then lasts exactly 15 minutes.
+
+Sadly, you find yourself toward the back of this very, very long line. To pass the time while you wait, you spend a long time thinking about this week’s Riddler column, completely unaware of the passage of time. The next thing you know, you’re second in line, with one person waiting in front of you — the exact conditions from the original puzzle. At this point, how long should you expect to wait for your haircut from Tiffany?
+
+(Hint: Think about the probability that the person in front of you will request Tiffany. Is it still 25 percent? Also, keep in mind that if there are *multiple* Tiffany requesters at the front of the line, and a barber other than Tiffany becomes available, the next non-Tiffany requester will effectively jump the line.)
+
+***
+
+## My Solution
+
+I've already solved this the cool math way once before, so why would I do it again? I already have the Monte-Carlo experiment framework, so let's just see what happens as the number of people in line converge on infinity. This could probably be so much more efficient but what can I do?
+
+```{r}
+simBarbers <- function(N, simNum = 1000) {
+  nextCust <- c() # stores the results of each simulation
+  for (i in 1:simNum) {
+    # generate the barbers (barber[1] is Tiffany)
+    barbers <- sample(seq(0.1, 15, by = 0.1), 4)
+    # generate the customers (first in line to last, TRUE wants Tiffany)
+    customers <- sample(c(TRUE, FALSE), prob = c(0.25, 0.75), N, replace = TRUE)
+    
+    while (length(customers) > 1) {
+      
+      # one barber is freed up after time t
+      t <- min(barbers)
+      barbers <- barbers - t
+      
+      # assigns the free barber to give one customer a haircut
+      if (customers[1]) { # customer wants Tiffany
+        if (barbers[1] == 0) { # Tiffany is available
+          customers <- customers[-1]
+        } else { # Tiffany isn't available
+          if (FALSE %in% customers) { # someone left in line doesn't care who they get
+            customers <- customers[-match(FALSE, customers)] # the next person who doesn't care gets a haicut
+          } else { # everyone left in line wants Tiffany -- resolves entire customer line (except 1) at once
+            customers <- customers[-(1:(length(customers) - 1))]
+            barbers[1] <- 0
+          }
+        }
+      } else { # customer doesn't want Tiffany
+        customers <- customers[-1]
+      }
+      barbers[barbers == 0] <- 15 # the barber now has 15 more minutes
+    }
+    # now it's our turn for a haircut
+    nextCust <- c(nextCust, customers[1])
+  }
+  return(mean(nextCust))
+}
+
+df <- data.frame(line = 1:500, prob = 0)
+for (row in 1:nrow(df)) {
+  df[row,"prob"] <- simBarbers(df[row,"line"], simNum = 100)
+}
+```
+
+```{r}
+library(ggplot2)
+ggplot(df) +
+  geom_point(aes(x = line, y = prob)) +
+  xlab("Length of Line") +
+  ylab("Probability of Next Customer Being a Tiffany Holdout")
+```
+
+Looks logarithmic, which makes sense.
+
+```{r}
+mean(simBarbers(1000, simNum = 5000))
+```
+
+This isn't even the answer but I got kinda bored with the problem. I'm sure I could find the answer quite easily. Who knows?
