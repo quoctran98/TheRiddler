@@ -1,0 +1,64 @@
+---
+title: "Riddler Classic Solution: Can You Get The Gloves Out Of The Box?"
+author: "Quoc Tran"
+date: "03/27/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-get-the-gloves-out-of-the-box/)
+
+#### By Zach Wissner-Gross
+
+From Chris Nho comes a question of rolling (and re-rolling) a die:
+
+You start with a fair 6-sided die and roll it six times, recording the results of each roll. You then write these numbers on the six faces of *another*, unlabeled fair die. For example, if your six rolls were 3, 5, 3, 6, 1 and 2, then your second die wouldn’t have a 4 on it; instead, it would have two 3s.
+
+Next, you roll this second die six times. You take those six numbers and write them on the faces of *yet another* fair die, and you continue this process of generating a new die from the previous one.
+
+Eventually, you’ll have a die with the same number on all six faces. What is the average number of rolls it will take to reach this state?
+
+*Extra credit*: Instead of a standard 6-sided die, suppose you have an *N*-sided die, whose sides are numbered from 1 to *N*. What is the average number of rolls it would take until all *N* sides show the same number?
+
+***
+
+## My Solution
+
+It's obvious that I'm going to end up doing this with Monte-Carlo experiments anyways, so we can just start off with that.
+
+```{r}
+dieGame <- function(nSides = 6) {
+  nRolls <- 0
+  currentDie <- 1:nSides
+  while (length(unique(currentDie)) != 1) {
+    currentDie <- sample(currentDie, nSides, replace = TRUE)
+    nRolls <- nRolls + 1
+  }
+  return(nRolls)
+}
+
+df <- data.frame(allGames = NA, nSides = NA)
+for (nSides in 6:16) {
+  allGames <- c()
+  for (i in 1:500) {
+    allGames <- c(allGames, dieGame(nSides = nSides))
+  }
+  df <- rbind(df, data.frame(allGames, nSides))
+}
+df <- df[-1,]
+
+print(mean(df[df$nSides == 6, "allGames"]))
+```
+
+```{r}
+library(ggplot2)
+ggplot(df) +
+  geom_violin(aes(x = factor(nSides), y = allGames), draw_quantiles = c(0.25, 0.5, 0.75)) +
+  ylim(c(0, 60))
+```
+
+
+
