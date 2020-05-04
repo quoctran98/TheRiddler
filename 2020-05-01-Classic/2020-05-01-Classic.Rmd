@@ -1,0 +1,108 @@
+---
+title: "Riddler Classic Solution: Can You Flip Your Way To Freedom?"
+author: "Quoc Tran"
+date: "05/01/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-flip-your-way-to-freedom/)
+
+#### By Zach Wissner-Gross
+
+From Bart Wright comes a rhetorical question from a famed soliloquy, “To flip, or not to flip?”:
+
+You are locked in the dungeon of a faraway castle with three fellow prisoners (i.e., there are four prisoners in total), each in a separate cell with no means of communication. But it just so happens that all of you are logicians (of course).
+
+To entertain themselves, the guards have decided to give you all a single chance for immediate release. Each prisoner will be given a fair coin, which can either be fairly flipped one time or returned to the guards without being flipped. If all flipped coins come up heads, you will all be set free! But if any of the flipped coins comes up tails, or if no one chooses to flip a coin, you will all be doomed to spend the rest of your lives in the castle’s dungeon.
+
+The only tools you and your fellow prisoners have to aid you are random number generators, which will give each prisoner a random number, uniformly and independently chosen between zero and one.
+
+What are your chances of being released?
+
+*Extra credit*: Instead of four prisoners, suppose there are *N* prisoners. Now what are your chances of being released?
+
+***
+
+## My Solution
+
+At first, it seems intutive that the goal of these locked-up logicians should be to reduce the number of coins that need to be flipped. 
+
+Is the goal to use the random number generator in a way to maximize the chances of one and only prisoner flipping the coin. An easy way to do this would be to set a threshold at some number $p$, so that $0\leq p \leq 1$ and have each prisoner flip the coin if their random number generator returns a number less than $p$.
+
+We could just find a value of $p$ that maximizes the probabilty of only one of the prisoners needing to flip the coin, but that ignores the other probability that we may end up with a different number of prisoners flipping the coin. While it's ideal that only one prisoner flips a coin, we would rather two, three, or even all four flip the coin than none flip the coin.
+
+The probability of $k$ successes of $N$ trials of an event with probability $p$ is:
+
+$${N \choose k}p^k(1-p)^{N-k}$$
+
+From this, we can multiply this by the probability of getting $k$ successful coin flips: $0.5^k$ to derive our final expression for the probability of escape, which we want to maximize by finding the optimal value of $p$, such that $0 \leq p \leq 1$ (we are excluding the case where $k=0$ because if no one flips the coin, there can be no chance of escape):
+
+$$\sum_{k=1}^{N}{N \choose k}p^k(1-p)^{N-k}\cdot0.5^k$$
+
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+binomialDist <- function (N, k, p) {
+  return(choose(N, k) * (p^k) * ((1-p)^(N-k)))
+}
+
+myFunction <- function (N, k_vector, p) {
+  escape <- 0
+  for (k in k_vector) {
+    escape <- escape + (binomialDist(N, k, p) * (0.5^k))
+  }
+  return(escape)
+}
+
+df <- data.frame(p = seq.int(0, 1, 0.01))
+
+df$escape <- myFunction(4, 1:4, df$p)
+
+print(paste("The optimal probability of escape is ", max(df$escape), " when the random number generator threshold is set to ", df[df$escape == max(df$escape), "p"], sep = ""))
+
+ggplot(df) +
+  geom_line(aes(x=p, y=escape)) +
+  xlab("Random Number Generator Threshold") +
+  ylab("Probability of Escape (%)") +
+  geom_vline(aes(xintercept=df[escape == max(escape), "p"]))
+```
+
+Here's some more fun stuff:
+
+```{r}
+myFunction <- function (n, k, p) {
+  return(choose(n, k) * (p^k) * ((1-p)^(n-k)))
+}
+
+df <- expand.grid(p = seq.int(0, 1, 0.01), k = 0:4)
+
+for (row in 1:nrow(df)) {
+  k <- df[row, "k"]
+  p <- df[row, "p"]
+  df[row, "prob"] <- myFunction(4, k, p)
+}
+
+ggplot(df) +
+  geom_line(aes(x=p, y=prob, color=factor(k))) +
+  xlab("Random Number Generator Threshold") +
+  ylab("Probability (%)")
+```
+
+```{r}
+ggplot(df, aes(x=factor(p), y=prob*100, fill=factor(k))) + 
+  geom_bar(stat="identity", colour="white") +
+  xlab("Random Number Generator Threshold") +
+  ylab("Probability of Coin Flip (%)") +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) + 
+  guides(fill=guide_legend(title="Coin Flips"))
+```
+
+

@@ -1,0 +1,35 @@
+---
+title: "Riddler Classic Solution: Can You Catch The Free T-Shirt?"
+author: "Quoc Tran"
+date: "04/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-catch-the-free-t-shirt/)
+
+#### By Zach Wissner-Gross
+
+Last week’s Riddler column garnered six comments on Facebook. However, every single one of those comments was spam. Sometimes, spammers even reply to other spammers’ comments with yet more spam. This got me thinking.
+
+Over the course of three days, suppose the probability of any spammer making a new comment on this week’s Riddler column over a very short time interval is proportional to the length of that time interval. (For those in the know, I’m saying that spammers follow a [Poisson process](https://mathworld.wolfram.com/PoissonProcess.html).) On average, the column gets one brand-new comment of spam per day that is not a reply to any previous comments. Each spam comment or reply also gets *its own* spam reply at an average rate of one per day.
+
+For example, after three days, I might have four comments that were not replies to any previous comments, and each of them might have a few replies (and their replies might have replies, which might have further replies, etc.).
+
+After the three days are up, how many total spam posts (comments plus replies) can I expect to have?
+
+***
+
+## My Solution
+
+It's obvious that I'm going to end up doing this with Monte-Carlo experiments anyways, so we can just start off with that.
+
+```{r}
+
+```
+
+
+
