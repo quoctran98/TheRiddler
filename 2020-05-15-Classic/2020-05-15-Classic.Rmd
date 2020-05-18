@@ -1,0 +1,114 @@
+---
+title: "Riddler Classic Solution: Can You Find The Best Dungeons & Dragons Strategy?"
+author: "Quoc Tran"
+date: "05/15/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-find-the-best-dungeons-dragons-strategy/)
+
+#### By Zach Wissner-Gross
+
+Since it was impossible to complete the game of sudoku, you might instead enjoy passing the time with a game of Dungeons & Dragons, courtesy of Emma Knight:
+
+The [fifth edition of Dungeons & Dragons](https://5thsrd.org/rules/advantage_and_disadvantage/) introduced a system of “advantage and disadvantage.” When you roll a die “with advantage,” you roll the die twice and keep the higher result. Rolling “with disadvantage” is similar, except you keep the lower result instead. The rules further specify that when a player rolls with *both* advantage and disadvantage, they cancel out, and the player rolls a single die. Yawn!
+
+There are two other, more mathematically interesting ways that advantage and disadvantage could be combined. First, you could have “advantage of disadvantage,” meaning you roll twice with disadvantage and then keep the higher result. Or, you could have “disadvantage of advantage,” meaning you roll twice with advantage and then keep the lower result. With a fair 20-sided die, which situation produces the highest expected roll: advantage of disadvantage, disadvantage of advantage or rolling a single die?
+
+*Extra Credit*: Instead of maximizing your expected roll, suppose you need to roll $N$ or better with your 20-sided die. For each value of $N$, is it better to use advantage of disadvantage, disadvantage of advantage or rolling a single die?
+
+***
+
+## My Solution
+
+```{r}
+library(ggplot2)
+```
+
+The probability of rolling exactly $N$ on a d20 with advantage is:
+
+$$1-(1-\frac{1}{20})^2 \cdot \frac{N}{20}$$
+
+The first term $1-(1-\frac{1}{20})^2$ is adapted from the binomial distribution and is the probability that we will roll $N$ at least once in both of our rolls. To account for the probability of choosing the higher of two rolls, our second term $\frac{N}{20}$ is the probability that our other roll will be either eaual to or less than $N$.
+
+We can change that second term to $\frac{21-N}{20}$ to account for the probability that our other roll will be greater than $N$ to get the probability of rolling exactly $N$ on a d20 with disadvantage:
+
+$$1-(1-\frac{1}{20})^2 \cdot \frac{21-N}{20}$$
+
+We can stick one of these expressions inside the other in order to get the probability of rolling $N$ in a d20 with advantage of disadvantage or disadvantage of advantage or something.
+
+I thought this would be much easier to solve analytically than it turned out to be. I'm just going to simulate it:
+
+```{r}
+# adv of disadv rolls
+adRolls <- c()
+for (i in 1:100000) {
+  adRolls <- c(adRolls, max(c(min(sample(1:20, 2, replace = TRUE)), min(sample(1:20, 2, replace = TRUE)))))
+}
+adRollsDF <- data.frame(adRolls)
+
+ggplot(adRollsDF) +
+  geom_histogram(aes(adRolls), binwidth = 1, fill = "blue") +
+  ggtitle("simulated PDF of advantage of disadvantage roll") +
+  xlab("result advantage of disadvantage roll") +
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())
+
+print(paste("Expected value of advantage of disadvantage rolls:", mean(adRolls)))
+```
+```{r}
+# disadv of adv rolls
+daRolls <- c()
+for (i in 1:100000) {
+  daRolls <- c(daRolls, min(c(max(sample(1:20, 2, replace = TRUE)), max(sample(1:20, 2, replace = TRUE)))))
+}
+daRollsDF <- data.frame(daRolls)
+
+ggplot(daRollsDF) +
+  geom_histogram(aes(daRolls), binwidth = 1, fill = "red") +
+  ggtitle("simulated PDF of disadvantage of advantage roll") +
+  xlab("result of disadvantage of advantage roll") +
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())
+
+print(paste("Expected value of disadvantage of advantage rolls:", mean(daRolls)))
+```
+
+```{r}
+# single rolls
+sRolls <- c()
+for (i in 1:100000) {
+  sRolls <- c(sRolls, sample(1:20, 1, replace = TRUE))
+}
+sRollsDF <- data.frame(sRolls)
+
+ggplot(sRollsDF) +
+  geom_histogram(aes(sRolls), binwidth = 1, fill = "green") +
+  ggtitle("simulated PDF of a single roll") +
+  xlab("result of a single roll") +
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())
+
+print(paste("Expected value of single roll:", mean(sRolls)))
+```
+
+
+```{r}
+bigDF <- data.frame(daRolls, adRolls, sRolls)
+
+ggplot(bigDF) +
+  geom_histogram(aes(daRolls), binwidth = 1, fill = "red", alpha = 0.4) +
+  geom_histogram(aes(adRolls), binwidth = 1, fill = "blue", alpha = 0.4) +
+  geom_histogram(aes(sRolls), binwidth = 1, fill = "green", alpha = 0.4) +
+  ggtitle("Simulated PDFs (exact result of AoD/DoA rolls)") +
+  xlab("Result of Roll") +
+  ylab("Frequency (of 100,000 trials)")
+```
+
