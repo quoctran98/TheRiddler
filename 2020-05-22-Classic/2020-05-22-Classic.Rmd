@@ -1,0 +1,160 @@
+---
+title: "Riddler Classic Solution: Can You Find The Fish In State Names?"
+author: "Quoc Tran"
+date: "05/22/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/somethings-fishy-in-the-state-of-the-riddler/)
+
+#### By Zach Wissner-Gross
+
+From Mark Bradwin comes a fishy puzzle about state names:
+
+Ohio is the only state whose name doesn’t share any letters with the word “mackerel.” It’s strange, but it’s true.
+
+But that isn’t the only pairing of a state and a word you can say that about — it’s not even the only fish! Kentucky has “goldfish” to itself, Montana has “jellyfish” and Delaware has “monkfish,” just to name a few.
+
+What is the longest “mackerel?” That is, what is the longest word that doesn’t share any letters with exactly one state? (If multiple “mackerels” are tied for being the longest, can you find them all?)
+
+*Extra credit*: Which state has the most “mackerels?” That is, which state has the most words for which it is the only state without any letters in common with those words?
+
+(For both the Riddler and the extra credit, please refer to Friend of the Riddler™ Peter Norvig’s [word list](https://norvig.com/ngrams/word.list).)
+
+***
+
+## My Solution
+
+Nice. Finally we have something that I won't feel bad about not being able to solve analytically. The only thing I'll feel bad about is not writing efficient code.
+
+```{r}
+library(stringr)
+library(ggplot2)
+library(ggrepel)
+library(scales)
+
+# for lapply later
+uniqueLetters <- function (wordVector) {
+  return(letters %in% wordVector)
+}
+
+# true if the two words have the same letter
+# input logical vector of whether letters appear or not
+compareWords <- function (word1, word2) {
+  return(!(2 %in% (word1 + word2))) # this is the best thing I've ever written
+}
+```
+
+```{r}
+# list of words and their vectors
+words <- scan("words.txt", what="char", skipNul=TRUE)
+wordList <- lapply(str_split(words, ""), uniqueLetters)
+names(wordList) <- words
+```
+
+```{r}
+# list of state names and their vectors
+states <- tolower(scan("states.txt", what="char", skipNul=TRUE))
+statesList <- lapply(str_split(states, ""), uniqueLetters)
+names(statesList) <- states
+```
+
+```{r}
+# final list of mackerels
+mackerels <- rep(list(NA), 50)
+names(mackerels) <- states
+```
+
+```{r, eval = FALSE}
+for (word in names(wordList)) {
+  wordName <- word
+  wordVector <- wordList[word]
+  
+  # all states that don't have the same letters
+  compatibleStates <- c()
+  
+  for(state in names(statesList)) {
+    stateName <- state
+    stateVector <- statesList[state]
+    
+    if(compareWords(unlist(stateVector), unlist(wordVector))) {
+      compatibleStates <- c(compatibleStates, stateName)
+    }
+  }
+  
+  # only if there's only one state that fits the requirement
+  if(length(compatibleStates) == 1) {
+    mackerels[[compatibleStates]] <- c(mackerels[[compatibleStates]], wordName)
+  }
+}
+
+# save the output
+yaml::write_yaml(mackerels, "mackerels.yaml")
+```
+
+This took somewhere from 10 to 15 minutes to run. Not too bad, but I'm not going to run it again and just import the list.
+
+```{r}
+mackerels <- yaml::read_yaml("mackerels.yaml")
+
+allMackerels <- unlist(mackerels, use.name = FALSE)
+allMackerels <- allMackerels[!is.na(allMackerels)]
+allMackerelsLength <- str_length(allMackerels)
+allMackerelsMax <- max(allMackerelsLength)
+longestMackerels <- allMackerels[allMackerelsLength  %in% allMackerelsMax]
+
+print(paste("The longest 'mackerels' are ", paste(longestMackerels, collapse = " and "), ".", sep = ""))
+
+print(paste(tools::toTitleCase(names(which.max(lengths(mackerels) - 1))), "has the most 'mackerels' with", max(lengths(mackerels)), "mackerels."))
+```
+
+Now that we've answered the Riddler, let's see if we can do something fun with the data. Does the number of unique letters in a state's name affect the number of "mackerels" that state has?
+
+```{r}
+mackerels <- yaml::read_yaml("mackerels.yaml")
+
+mackerelDF <- data.frame(state = states, nMackerels = 0, nLetters = 0)
+for (row in 1:nrow(mackerelDF)) {
+  state <- mackerelDF[row,"state"]
+  mackerelDF[row,"nLetters"] <- sum(letters %in% unlist(str_split(state, "")))
+  mackerelDF[row,"nMackerels"] <- length(mackerels[[state]]) - 1
+}
+
+ggplot(mackerelDF) +
+  geom_point(aes(x = nLetters, y = nMackerels), alpha = 0.3, size = 4) +
+  geom_smooth(aes(x = nLetters, y = nMackerels), method = "lm", formula= y ~ I(1/x)) +
+  scale_x_continuous(breaks = seq(0, 11, by = 1)) +
+  scale_y_continuous(breaks = seq(0, 12000, by = 2000), label = number) +
+  xlab("Unique Letters in State Name") +
+  ylab("Number of \"Mackerels\"")
+
+
+summary(lm(mackerelDF$nMackerels ~ I(1/mackerelDF$nLetters)))
+```
+
+Not bad. What about GDP per capita?
+
+```{r}
+mackerelDF <- cbind(mackerelDF, read.csv("gdp.csv"))
+mackerelDF <- mackerelDF[,-4]
+mackerelDF$gdp <- as.numeric(mackerelDF$gdp)
+mackerelDF$gdpPerCapita <- as.numeric(mackerelDF$gdpPerCapita)
+```
+
+```{r}
+ggplot(mackerelDF, aes(x = gdpPerCapita, y = nMackerels + 1, labels = state)) +
+  geom_point(alpha = 0.5, stroke = 0, size = 5) +
+  geom_text_repel(aes(label = ifelse(state %in% c("ohio", "alabama", "mississippi", "illinois", "connecticut", "michigan", "maine", "california", "vermont", "florida", "virginia", "alaska", "pennsylvania", "montana", "hawaii", "texas", "georgia"), tools::toTitleCase(as.character(state)), '')), hjust = -0.2, vjust = -0.9) +
+  geom_text_repel(aes(label = ifelse(state %in% c("newyork"), "New York", '')), hjust = 0.8, vjust = -1.4) +
+  scale_x_continuous(breaks = seq(0, 100000, by = 10000), labels = dollar) +
+  scale_y_log10(breaks = c(0, 10, 100, 500, 1000, 2000, 4000, 12000), labels = number) +
+  xlab("GDP Per Capita") +
+  ylab("Number of \"Mackerels\"") +
+  theme(legend.position="none")
+```
+
+No.
