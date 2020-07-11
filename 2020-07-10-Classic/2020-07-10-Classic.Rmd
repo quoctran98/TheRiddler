@@ -1,0 +1,190 @@
+---
+title: "Riddler Classic Solution: Can You Make 24?"
+author: "Quoc Tran"
+date: "07/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-make-24/)
+
+#### By Zach Wissner-Gross
+
+From Austin Shapiro comes a story of stacking that may stump you:
+
+Mira has a toy with five rings of different diameters and a tapered column. Each ring has a “correct” position on the column, from the largest ring that fits snugly at the bottom to the smallest ring that fits snugly at the top.
+
+Each ring she places will slide down to its correct position, if possible. Otherwise, it will rest on what was previously the topmost ring.
+
+For example, if Mira stacks the smallest ring first, then she cannot stack any more rings on top. But if she stacks the second-smallest ring first, then she can stack any one of the remaining four rings above it, after which she cannot stack any more rings.
+
+Here are a four different stacks Mira could make:
+
+![](https://fivethirtyeight.com/wp-content/uploads/2020/07/stack_examples.png?w=1150)
+
+Four possible arrangements of stacks
+This got Mira thinking. How many unique stacks can she create using at least one ring?
+
+*Extra credit*: Instead of five rings, suppose the toy has *N* rings. Now how many unique stacks can Mira create?
+
+***
+
+### My Solution
+
+Computers are pretty cool. They can do math really fast:
+
+```{r}
+library(gtools)
+
+uniqueRingStacks <- c()
+
+for (i in 1:5) {
+  ringPermutations <- permutations(n = i, r = i, v = 1:i, repeats.allowed = FALSE)
+  
+  ringStacksTemp <- c()
+  
+  for (row in 1:nrow(ringPermutations)) {
+    # element 1 is bottom, element 5 is top
+    finalStack <- c()
+    for (col in 1:i) {
+      ring <- ringPermutations[row, col]
+      topRing <- finalStack[length(finalStack)]
+      if (is.null(topRing)) {
+        finalStack <- ring
+      } else if (ring > topRing) {
+        finalStack <- c(finalStack, ring)
+      }
+    }
+    ringStacksTemp <- c(ringStacksTemp, paste(finalStack, collapse = ""))
+  }
+  
+  uniqueRingStacks <- c(uniqueRingStacks, unique(ringStacksTemp))
+}
+
+print(paste("There are", length(uniqueRingStacks), "possible stacks with 5 rings."))
+
+```
+
+I want to learn how to draw cool visualizations, so let's try it out!
+
+```{r}
+library(ggplot2)
+library(stringr)
+
+ring1 <- data.frame(
+  x = c(2.5, 2.5, 7.5, 7.5),
+  y = c(0, 2, 2, 0),
+  col = "red"
+)
+
+ring2 <- data.frame(
+  x = c(3, 3, 7, 7),
+  y = c(2, 4, 4, 2),
+  col = "orange"
+)
+
+ring3 <- data.frame(
+  x = c(3.5, 3.5, 6.5, 6.5),
+  y = c(4, 6, 6, 4),
+  col = "darkgreen"
+)
+
+ring4 <- data.frame(
+  x = c(4, 4, 6, 6),
+  y = c(6, 8, 8, 6),
+  col = "blue"
+)
+
+ring5 <- data.frame(
+  x = c(4.5, 4.5, 5.5, 5.5),
+  y = c(8, 10, 10, 8),
+  col = "purple"
+)
+
+drawCol <- data.frame(
+  x = c(2.5, 5, 7.5),
+  y = c(0, 10, 0)
+)
+
+drawRingStack <- function (stack) {
+  
+  p <- ggplot() + 
+    geom_polygon(data = drawCol, aes(x=x, y=y), fill = "gray50") +
+    xlim(c(0,10)) +
+    ylim(c(0,10)) +
+    theme_void()
+  
+  stack <- paste("ring", unlist(str_split(stack, "")), sep = "")
+  
+  for (ring in stack) {
+    p <- p + geom_polygon(data = eval(parse(text = ring)),
+                          aes(x=x, y=y), 
+                          fill = eval(parse(text = paste(ring, "$col", sep = ""))), 
+                          alpha = 0.7)
+  }
+  return(p)
+}
+```
+
+```{r}
+library(ggpubr)
+
+for (stackNum in 1:16) {
+  assign(paste(letters[stackNum], "0", sep = ""), drawRingStack(uniqueRingStacks[stackNum]))
+}
+
+ggarrange(a0,b0,c0,d0,e0,f0,g0,h0,i0,j0,k0,l0,m0,n0,o0,p0, ncol = 4, nrow = 4)
+```
+
+```{r}
+
+for (stackNum in 17:31) {
+  assign(paste(letters[stackNum - 16], "0", sep = ""), drawRingStack(uniqueRingStacks[stackNum]))
+}
+
+ggarrange(a0,b0,c0,d0,e0,f0,g0,h0,i0,j0,k0,l0,m0,n0,o0, ncol = 4, nrow = 4)
+```
+
+The extra credit should be pretty simple -- I'll just keep brute forcing this. People are saying on Twitter that it's taking them a pretty long time to brute force and I'm not a computer scientist, so I'm pretty sure mine will be even slower.
+
+```{r}
+for (j in 6:8) {
+  uniqueRingStacks <- c()
+
+  for (i in 1:j) {
+    ringPermutations <- permutations(n = i, r = i, v = 1:i, repeats.allowed = FALSE)
+    
+    ringStacksTemp <- c()
+    
+    for (row in 1:nrow(ringPermutations)) {
+      # element 1 is bottom, element 5 is top
+      finalStack <- c()
+      for (col in 1:i) {
+        ring <- ringPermutations[row, col]
+        topRing <- finalStack[length(finalStack)]
+        if (is.null(topRing)) {
+          finalStack <- ring
+        } else if (ring > topRing) {
+          finalStack <- c(finalStack, ring)
+        }
+      }
+      ringStacksTemp <- c(ringStacksTemp, paste(finalStack, collapse = ""))
+    }
+    
+    uniqueRingStacks <- c(uniqueRingStacks, unique(ringStacksTemp))
+  }
+  
+  print(paste("There are", length(uniqueRingStacks), "possible stacks with", j, "rings."))
+
+}
+```
+
+Alright, I made the code stop at 8 rings, since it doesn't seem like I'm going to be able to push past that. But the numbers look pretty promising!
+
+It's pretty clear that the possible number of unique ring stacks for $n$ rings is $2^n-1$
+
+:)
+

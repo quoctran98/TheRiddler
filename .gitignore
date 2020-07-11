@@ -4,4 +4,6 @@
 .Ruserdata
 .html
 .DS_Store
-*.png
+*/rsconnect
+*.html
+*/anim
