@@ -146,7 +146,8 @@ for (rulerBreaks in 1:12) {
     scale_x_continuous(name = "Length of Ruler Piece (inches)", 
                        breaks = c(seq(0, 12, by = 2)),
                        limits = c(0, 12)) +
-    ggtitle(paste("Length of Ruler Piece Containing 6\" Mark with", rulerBreaks, "Break(s)")) +
+    ggtitle(paste("Length of Ruler Piece Containing 6\" Mark with", rulerBreaks, 
+                  if (rulerBreaks == 1) "Break" else "Breaks")) +
     theme_pubr()
   ggsave(paste("animBreaks/hist", 
                formatC(rulerBreaks, digits = 1, format = "d", flag = "0"), 
