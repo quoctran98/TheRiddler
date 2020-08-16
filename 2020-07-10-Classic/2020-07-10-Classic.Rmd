@@ -39,33 +39,49 @@ Computers are pretty cool. They can do math really fast:
 ```{r}
 library(gtools)
 
-uniqueRingStacks <- c()
-
-for (i in 1:5) {
-  ringPermutations <- permutations(n = i, r = i, v = 1:i, repeats.allowed = FALSE)
+permuteRings <- function (totalRings) {
+  uniqueRingStacks <- c()
   
-  ringStacksTemp <- c()
-  
-  for (row in 1:nrow(ringPermutations)) {
-    # element 1 is bottom, element 5 is top
-    finalStack <- c()
-    for (col in 1:i) {
-      ring <- ringPermutations[row, col]
-      topRing <- finalStack[length(finalStack)]
-      if (is.null(topRing)) {
-        finalStack <- ring
-      } else if (ring > topRing) {
-        finalStack <- c(finalStack, ring)
+  ringCombos <- combinations((2*totalRings) - 1,
+                             totalRings, 
+                             c(rep.int(0, totalRings - 1), 1:totalRings), 
+                             set = FALSE, 
+                             repeats.allowed = FALSE)
+  for (combo in 1:nrow(ringCombos)) {
+    combo <- ringCombos[combo,]
+    combo <- combo[combo != 0]
+    # ring 1 is biggest and 5 is the smallest (0 = no ring)
+    ringPermutations <- permutations(n = length(combo), r = length(combo), v = combo, repeats.allowed = FALSE)
+    ringStacksTemp <- c()
+    # resolve the permuation into an actual ring stack
+    for (row in 1:nrow(ringPermutations)) {
+      finalStack <- c()
+      fullStack <- FALSE
+      for (col in 1:length(combo)) {
+        ring <- ringPermutations[row, col]
+        topRing <- finalStack[length(finalStack)]
+        
+        if (is.null(topRing)) {
+          finalStack <- ring
+        } else if (!fullStack) {
+          finalStack <- c(finalStack, ring)
+        }
+        
+        for (ringPos in 1:length(finalStack)) {
+          if (ringPos + rev(finalStack)[ringPos] == totalRings + 1) {
+            fullStack <- TRUE
+          }
+        }
       }
+      # element 1 is bottom, element 5 is top
+      ringStacksTemp <- c(ringStacksTemp, paste(finalStack, collapse = ""))
     }
-    ringStacksTemp <- c(ringStacksTemp, paste(finalStack, collapse = ""))
+    uniqueRingStacks <- c(uniqueRingStacks, unique(ringStacksTemp))
   }
-  
-  uniqueRingStacks <- c(uniqueRingStacks, unique(ringStacksTemp))
+  return(unique(uniqueRingStacks))
 }
 
-print(paste("There are", length(uniqueRingStacks), "possible stacks with 5 rings."))
-
+print(paste("There are", length(permuteRings(5)), "possible stacks with 5 rings."))
 ```
 
 I want to learn how to draw cool visualizations, so let's try it out!
@@ -74,35 +90,11 @@ I want to learn how to draw cool visualizations, so let's try it out!
 library(ggplot2)
 library(stringr)
 
-ring1 <- data.frame(
-  x = c(2.5, 2.5, 7.5, 7.5),
-  y = c(0, 2, 2, 0),
-  col = "red"
-)
-
-ring2 <- data.frame(
-  x = c(3, 3, 7, 7),
-  y = c(2, 4, 4, 2),
-  col = "orange"
-)
-
-ring3 <- data.frame(
-  x = c(3.5, 3.5, 6.5, 6.5),
-  y = c(4, 6, 6, 4),
-  col = "darkgreen"
-)
-
-ring4 <- data.frame(
-  x = c(4, 4, 6, 6),
-  y = c(6, 8, 8, 6),
-  col = "blue"
-)
-
-ring5 <- data.frame(
-  x = c(4.5, 4.5, 5.5, 5.5),
-  y = c(8, 10, 10, 8),
-  col = "purple"
-)
+ring1 <- data.frame(x = c(2.5, 2.5, 7.5, 7.5), col = "red")
+ring2 <- data.frame(x = c(3, 3, 7, 7), col = "orange")
+ring3 <- data.frame(x = c(3.5, 3.5, 6.5, 6.5), col = "darkgreen")
+ring4 <- data.frame(x = c(4, 4, 6, 6), col = "blue")
+ring5 <- data.frame(x = c(4.5, 4.5, 5.5, 5.5), col = "purple")
 
 drawCol <- data.frame(
   x = c(2.5, 5, 7.5),
@@ -110,19 +102,22 @@ drawCol <- data.frame(
 )
 
 drawRingStack <- function (stack) {
-  
   p <- ggplot() + 
     geom_polygon(data = drawCol, aes(x=x, y=y), fill = "gray50") +
-    xlim(c(0,10)) +
+    xlim(c(2,8)) +
     ylim(c(0,10)) +
     theme_void()
-  
-  stack <- paste("ring", unlist(str_split(stack, "")), sep = "")
-  
-  for (ring in stack) {
-    p <- p + geom_polygon(data = eval(parse(text = ring)),
-                          aes(x=x, y=y), 
-                          fill = eval(parse(text = paste(ring, "$col", sep = ""))), 
+  stack <- unlist(str_split(stack, ""))
+  highestRing <- 0
+  for (ringPos in 1:length(stack)) {
+    ringSize <- stack[ringPos]
+    ringHeight <- max(highestRing + 1, as.numeric(ringSize))
+    trueRingPos <- c(0,2,2,0) + ((ringHeight - 1) *  2)
+    highestRing <- ringHeight
+    p <- p + geom_polygon(data = eval(parse(text = paste("ring", ringSize, sep = ""))),
+                          aes(x=x), 
+                          y=trueRingPos,
+                          fill = eval(parse(text = paste("ring", ringSize, "$col", sep = ""))), 
                           alpha = 0.7)
   }
   return(p)
@@ -132,59 +127,25 @@ drawRingStack <- function (stack) {
 ```{r}
 library(ggpubr)
 
-for (stackNum in 1:16) {
-  assign(paste(letters[stackNum], "0", sep = ""), drawRingStack(uniqueRingStacks[stackNum]))
-}
+ringStacks <- permuteRings(5)
+plotList <- vector('list', length(ringStacks))
+plotList <- lapply(ringStacks, drawRingStack)
 
-ggarrange(a0,b0,c0,d0,e0,f0,g0,h0,i0,j0,k0,l0,m0,n0,o0,p0, ncol = 4, nrow = 4)
-```
-
-```{r}
-
-for (stackNum in 17:31) {
-  assign(paste(letters[stackNum - 16], "0", sep = ""), drawRingStack(uniqueRingStacks[stackNum]))
-}
-
-ggarrange(a0,b0,c0,d0,e0,f0,g0,h0,i0,j0,k0,l0,m0,n0,o0, ncol = 4, nrow = 4)
+do.call(ggarrange, c(plotList[1:65], list(nrow = 6, ncol = 11)))
 ```
 
 The extra credit should be pretty simple -- I'll just keep brute forcing this. People are saying on Twitter that it's taking them a pretty long time to brute force and I'm not a computer scientist, so I'm pretty sure mine will be even slower.
 
 ```{r}
-for (j in 6:8) {
-  uniqueRingStacks <- c()
-
-  for (i in 1:j) {
-    ringPermutations <- permutations(n = i, r = i, v = 1:i, repeats.allowed = FALSE)
-    
-    ringStacksTemp <- c()
-    
-    for (row in 1:nrow(ringPermutations)) {
-      # element 1 is bottom, element 5 is top
-      finalStack <- c()
-      for (col in 1:i) {
-        ring <- ringPermutations[row, col]
-        topRing <- finalStack[length(finalStack)]
-        if (is.null(topRing)) {
-          finalStack <- ring
-        } else if (ring > topRing) {
-          finalStack <- c(finalStack, ring)
-        }
-      }
-      ringStacksTemp <- c(ringStacksTemp, paste(finalStack, collapse = ""))
-    }
-    
-    uniqueRingStacks <- c(uniqueRingStacks, unique(ringStacksTemp))
-  }
-  
-  print(paste("There are", length(uniqueRingStacks), "possible stacks with", j, "rings."))
-
+for (i in 1:8) {
+  print(paste("There are", length(permuteRings(i)), "possible stacks with", i, "rings."))
 }
 ```
 
-Alright, I made the code stop at 8 rings, since it doesn't seem like I'm going to be able to push past that. But the numbers look pretty promising!
+Hmm.. So 8 rings is probably the most that I can push my computer to realistically calculate. But, hey look: it's a sequence of integers! More specifically, it's [A003101](https://oeis.org/A003101) on OEIS. There's no need to do or understand math, when people in the past have already figured it out.
 
-It's pretty clear that the possible number of unique ring stacks for $n$ rings is $2^n-1$
+The number of unique stacks of $N$ rings is:
 
-:)
+$$\sum_{k = 1..N} (N - k + 1)^k$$
 
+(probably)
