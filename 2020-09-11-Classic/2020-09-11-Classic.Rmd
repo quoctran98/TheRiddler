@@ -33,7 +33,7 @@ If you're in first place, you're not affected by the whole teammate drafting thi
 
 $$\frac{1}{4}(5pts)$$
 
-The odds of being and finishing in second place and the odds of being and second and that odds that one of the teammates isn't ahead in first place, which would push you back into third:
+The odds of being and finishing in second place are the odds of already being in second and that odds that one of the teammates isn't ahead in first place, which would push you back into third:
 
 $$\frac{1}{4} \cdot \frac{1}{3} = \frac{1}{12}(3pts)$$
 
