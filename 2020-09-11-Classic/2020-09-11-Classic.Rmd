@@ -1,0 +1,84 @@
+---
+title: "Riddler Classic Solution: Can You Reach The Summit First?"
+author: "Quoc Tran"
+date: "09/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-reach-the-summit-first/)
+
+#### By Zach Wissner-Gross
+
+This month, the Tour de France is back, and so is the [Tour de FiveThirtyEight](https://fivethirtyeight.com/features/can-you-win-the-tour-de-fivethirtyeight/)
+
+For every mountain in the Tour de FiveThirtyEight, the first few riders to reach the summit are awarded points. The rider with the most such points at the end of the Tour is named “King of the Mountains” and gets to wear a special polka dot jersey.
+
+At the moment, you are racing against three other riders up one of the mountains. The first rider over the top gets 5 points, the second rider gets 3, the third rider gets 2, and the fourth rider gets 1.
+
+All four of you are of equal ability — that is, under normal circumstances, you all have an equal chance of reaching the summit first. But there’s a catch — two of your competitors are on the same team. Teammates are able to work together, drafting and setting a tempo up the mountain. Whichever teammate happens to be slower on the climb will get a boost from their faster teammate, and the two of them will both reach the summit at the faster teammate’s time.
+
+As a lone rider, the odds may be stacked against you. In your quest for the polka dot jersey, how many points can you expect to win on this mountain, on average?
+
+***
+
+### My Solution
+
+For once, I actually kind of see what's going on here and I think we can solve this analytically, step by step for the probability of finishing in each position.
+
+If you're in first place, you're not affected by the whole teammate drafting thing, so your odds of finishing in first place is the same as being it first place:
+
+$$\frac{1}{4}(5pts)$$
+
+The odds of being and finishing in second place and the odds of being and second and that odds that one of the teammates isn't ahead in first place, which would push you back into third:
+
+$$\frac{1}{4} \cdot \frac{1}{3} = \frac{1}{12}(3pts)$$
+
+In the same vein, the odds of being pushed back to third from second are:
+
+$$\frac{1}{4} \cdot \frac{2}{3} = \frac{1}{6}(2pts)$$
+
+Being in third place makes the math a bit more complicated: there are three possible scenarios with two outcomes:
+
+1. Both teammates are ahead in first and second and you stay in third: $\frac{1}{4} \cdot \frac{1}{3} = \frac{1}{12}(2pts)$
+
+2. There's a teammate in first and one in fourth, so you get pushed back into fourth: $\frac{1}{4} \cdot \frac{1}{3} = \frac{1}{12}(1pt)$
+
+2. There's a teammate in second and one in fourth, so you get pushed back into fourth: $\frac{1}{4} \cdot \frac{1}{3} = \frac{1}{12}(1pt)$
+
+In fourth place, these teammate shenanigans can't affect you, so the odds are just:
+
+$$\frac{1}{4}(1pt)$$
+
+We can now sum all of these point values to find the expected points you'd win:
+
+$$\frac{5}{4} + \frac{3}{12} + \frac{2}{6} + \frac{2}{12} + \frac{1}{12} + \frac{1}{12}\ + \frac{1}{4} = \frac{29}{12} \approx 2.4167$$
+
+And now we can check our answers:
+
+```{r}
+simRace <- function() {
+  order <- sample(c("you", "team", "team", "other"), 4)
+  teamFirst <- match("team", order)
+  
+  #remove second teammate and add behind first
+  order <- order[!duplicated(order)]
+  order <- append(order, "team", after = teamFirst)
+  #order <- append(order, "team", after = teamFirst + 1) if three teammates
+  
+  #return the amt of points you get
+  return(c(5, 3, 2, 1)[match("you", order)])
+}
+
+allSims <- c()
+for (i in 1:100000) {
+  allSims <- c(allSims, simRace())
+}
+
+print(paste("In this scenario, you can expect to win", mean(allSims), "points, compared to", mean(c(5,3,2,1)), "points if there were no teammates."))
+```
+
+Nice 😎 
