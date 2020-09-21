@@ -1,0 +1,147 @@
+---
+title: "Riddler Classic Solution: Can You Break A Very Expensive Centrifuge?"
+author: "Quoc Tran"
+date: "09/18/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-break-a-very-expensive-centrifuge/)
+
+#### By Zach Wissner-Gross
+
+From Oliver Roeder, [who knows a thing or two](https://fivethirtyeight.com/contributors/oliver-roeder/) about riddles, comes a labyrinthine matter of lexicons:
+
+One of Ollie’s favorite online games is [Guess My Word](https://hryanjones.com/guess-my-word/). Each day, there is a secret word, and you try to guess it as efficiently as possible by typing in other words. After each guess, you are told whether the secret word is alphabetically before or after your guess. The game stops and congratulates you when you have guessed the secret word. For example, the secret word was recently “nuance,” which Ollie arrived at with the following series of nine guesses: naan, vacuum, rabbi, papa, oasis, nuclear, nix, noxious, nuance.
+
+Each secret word is randomly chosen from a dictionary with exactly 267,751 entries. If you have this dictionary memorized, and play the game as efficiently as possible, how many guesses should you expect to make to guess the secret word?
+
+***
+
+### My Solution
+
+So I think the easiest way to do this is just to simulate it. I'm guessing the most optimal strategy is to guess halfway in between the two bounds every single time? I think that's called a binary search tree, but I'm no computer scientist.
+
+```{r}
+playGame <- function (totalWords = 267751, forceAnswer = NA) {
+  guessesMade <- 0
+  
+  answer <- sample(1:totalWords, 1)
+  
+  if (!is.na(forceAnswer)) {
+    answer <- forceAnswer
+  }
+  
+  guess <- 0
+  prevGuess <- -1
+
+  lowerBound <- 0
+  upperBound <- totalWords + 1
+  while (guess != answer) {
+    if (guess < answer) {
+      if (guess > lowerBound) {
+        lowerBound <- guess
+      }
+    } else {
+      if (guess < upperBound) {
+        upperBound <- guess
+      }
+    }
+    
+    guessesMade <- guessesMade + 1
+    prevGuess <- guess
+    guess <- round((lowerBound + upperBound)/2)
+    if (guess == prevGuess) {
+      print("uh oh")
+      guess <- answer
+    }
+  }
+  
+  return(guessesMade)
+}
+```
+
+```{r}
+allSims <- c()
+for (i in 1:10000) {
+  allSims <- append(allSims, playGame())
+}
+
+print(mean(allSims))
+```
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+
+ggplot(data.frame(allSims)) +
+  geom_histogram(aes(x = allSims), binwidth = 1) +
+  xlab("Number of Guesses") +
+  ylab("Frequency\n(of 10,000 random simulations)") +
+  theme_pubr()
+```
+
+Cool, so it seems like the answer is 17-ish, but I think that with our search method, every answer will result in the same number guesses needed every single time, so I want to see if there's a pattern if I go through all 267,751 words (the code takes a bit to run, so I won't run it in when knitting the markdown doc).
+
+```{r, eval = F}
+allSimsGuesses <- c()
+allSimsAnswers <- 1:267751
+for (i in allSimsAnswers) {
+  allSimsGuesses <- append(allSimsGuesses,playGame(forceAnswer = i))
+}
+
+df <- data.frame(guesses = allSimsGuesses, answer = allSimsAnswers)
+write.csv(df, "allAnswers.csv")
+```
+
+```{r}
+df <- read.csv("allAnswers.csv")
+ggplot(df) +
+  geom_point(aes(x = answer, y = guesses), alpha = 0.1) +
+  scale_y_continuous(breaks = seq(1, 19, by = 3)) +
+  scale_x_continuous(breaks = c(1, round(267751/2), 267751)) +
+  xlab("Word (in alphabetical order)") +
+  ylab("Guesses") +
+  theme_pubr()
+```
+
+Okay, yeah. The pattern is pretty obvious — I actually should have seen that coming. I'm actually sort of confident that I can figure out an analytical solution to this now.
+
+For each number of guesses ($n$), there are going to be $2^{n-1}$ words will take that $n$ guesses to find, up until the highest number of guesses. I'm pretty sure that $267751$ isn't a power of two and I actually don't know which powers of two it falls between (though I have a pretty good guess based on the graph above), so let's just define $n$ where $2^n \leq 267751$ and $2^{n+1} > 267751$. I'll have to solve this part computationally, I think.
+
+But with that, we can just multiply each number of guesses by the number of words that will use that many guesses:
+
+$$\sum\limits_{k=1}^n k2^{k-1}$$
+
+The term for the leftovers is going to be however many words there are that's more than $2^n$ multiplied by the number of guesses that it'll take to get there (basically the top most line in our graph):
+
+$$(267751 - 2^n)\cdot(n+1)$$
+
+Now we can just add these together and divide by $267751$ to find the expected number of guesses:
+
+$$\frac{(\sum\limits_{k=1}^n k2^{k-1}) + (267751 - 2^n)\cdot(n+1)}{267751}$$
+
+So the only part that we have to kinda do in a cheaty way is to find out what $n$ actually is — which powers of two that 267751 falls between:
+
+```{r}
+n <- 0
+while (2^n <= 267751) {
+  n <- n + 1
+}
+print(n - 1)
+```
+
+Cool, $n$ is what we expected based on the graph above. Now we can use it to solve our expression (with computers, of course. I have no idea how to do that by hand)
+
+```{r}
+n <- 18
+summationTerm <- 0
+for (k in 1:n) {
+  summationTerm <- summationTerm + (k*(2^(k-1)))
+}
+leftoverTerm <- (267751 - (2^n)) * (n+1)
+print((summationTerm + leftoverTerm) / 267751)
+```
