@@ -1,0 +1,109 @@
+---
+title: "Riddler Classic Solution: Can You Pass the Cranberry Sauce?"
+author: "Quoc Tran"
+date: "11/20/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-pass-the-cranberry-sauce/)
+
+#### By Zach Wissner-Gross
+
+From Patrick Lopatto comes a riddle we can all be thankful for:
+
+To celebrate Thanksgiving, you and 19 of your family members are seated at a circular table (socially distanced, of course). Everyone at the table would like a helping of cranberry sauce, which happens to be in front of you at the moment.
+
+Instead of passing the sauce around in a circle, you pass it randomly to the person seated directly to your left or to your right. They then do the same, passing it randomly either to the person to *their* left or right. This continues until everyone has, at some point, received the cranberry sauce.
+
+Of the 20 people in the circle, who has the greatest chance of being the *last* to receive the cranberry sauce?
+
+***
+
+### My Solution
+
+Okay, I have scrapped the stream-of-conciousness writeup and code where I got increasingly frustrated and ran more and more simulations. Instead, I will summarize my descent into madness in a few paragraphs and chunks of code.
+
+Obvioulsy, I started off just coding a simulation and I ran it. The histogram from that just looked raandom and gave no definitive answer, so I ran even more simulations while I got ready for bed and ran into the same issue. I gave up and went to bed.
+
+The next day, I thought that something was wrong with my code (often this is the case), so I started troubleshooting. Among other things, I simulated cases where the initial pass was to the left or to the right and it confirmed my intuition that the last person would likely be the person to your other side (though now I'm thinking about it, it makes less and less intuitive sense).
+
+At this point I started suspecting that no one person was more likely than the next to be the last to recieve the cranberry sauce, so I just added a bunch of zeroes to `nruns` and hit the run button. Unfortunately I had a Zoom meeting in 10 minutes. The code hadn't finished running yet so I just let it run while I was in the Zoom meeting, which was okay, I guess, except for the fact that I had to endure my laptop getting pretty hot and the fans spinning up pretty loudly. The meeting and the code both took around an hour to wrap up (the meeting ran on time but the code was, as expected, extremely inefficient). My suspcions were confirmed: Zach had indeed tricked me.
+
+Here's the code:
+
+```{r}
+passCranberry <- function(n = 20, initialPass = F) {
+  # index 1 is you +1 is to the right and so on until the last person
+  people <- rep.int(F, n)
+  cranberry <- 1
+  people[cranberry] <- T
+  
+  if (initialPass != F) {
+    cranberry <- cranberry + initialPass
+    if (cranberry == 0) {
+      cranberry <- n
+    }
+    if (cranberry == (n+1)) {
+      cranberry <- 1
+    }
+    people[cranberry] <- T
+  }
+  
+  while(sum(people) < (n - 1)) {
+    cranberry <- cranberry + sample(c(-1, 1), 1)
+    if (cranberry == 0) {
+      cranberry <- n
+    }
+    if (cranberry == (n+1)) {
+      cranberry <- 1
+    }
+    people[cranberry] <- T
+  }
+  return(match(F, people))
+}
+
+# thanks tutorialspoint.com
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+```
+
+I won't run the next block when knitting, for obvious reasons.
+
+```{r, eval = F}
+lastPerson <- c()
+nruns <- 1000000
+for (i in 1:nruns) {
+  lastPerson <- append(lastPerson, passCranberry())
+}
+print(paste("The person ", getmode(lastPerson) - 1, " seats to your right is usually the last one to get the cranberry sauce, getting it last ", (sum(getmode(lastPerson) == lastPerson)/nruns)*100, "% of the time.", sep = ""))
+```
+
+I'll import the data.
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+
+lastPerson <- read.csv("lastPerson.csv")[,2]
+
+ggplot(data.frame(lastPerson)) +
+  geom_histogram(aes(x = lastPerson - 1), binwidth = 1) +
+  ylab("Freq. of Being the Last to be Cranberried") +
+  xlab("No. of People to Your Right") +
+  xlim(c(1,19)) +
+  theme_pubr() +
+  theme(axis.text.y=element_blank(),
+        axis.ticks.y=element_blank())
+```
+
+Cool. It's literally a rectangle — how interesting. What'll be more interesting however is how much energy and money was wasted on figuring out that this was a trick question.
+
+The code took an hour to run. My laptop has what it claims to be a "1.4GHz quad-core Intel Core i5" processor, which further digging reveals to me is the Intel Core i5-8365U. This CPU has a TDP of 15 watts — let's just assume it was also drawing all that power too. At current electricity prices in Southern California of 22 cents per kWh, this simulation cost me 0.022 cents.
+
+The EPA claims household electricity usage translates to 998.4 lbs CO2 per megawatt-hour, so this simulation released 6.79 grams of CO2 into the our atmosphere — the equivalent of driving a 2019 Honda Civic 119.6 feet.
