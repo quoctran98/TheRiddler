@@ -1,0 +1,77 @@
+---
+title: "Riddler Classic Solution: Can You (Not) Flip Your Lid?"
+author: "Quoc Tran"
+date: "12/18/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-not-flip-your-lid/)
+
+#### By Zach Wissner-Gross
+
+From Keith Wynroe comes an epic power battle that is sure to wear you down:
+
+The Game of Attrition has two players, each of whom starts with a whole number of “power points.” Players take turns “attacking” each other, which involves subtracting their own number of power points from their opponent’s until one of the players is out of points.
+
+For example, suppose Player A (who goes first) starts with 5 points and Player B starts with 7 points. After A’s first attack, A still has 5 points, while B has been reduced to 2 points (i.e., 7 minus 5). Now it’s B’s turn, who reduces A to 5 minus 2, or 3 points. Finally, on A’s second turn, B is reduced from 2 points to nothing (since 2 minus 3 is −1). Despite starting with fewer points, A wins!
+
+Now suppose A goes first and starts with N points. In terms of N, what is the greatest number of points B can start with so that A will still emerge victorious?
+
+***
+
+### My Solution
+
+I don't see any clear way to approach this problem analytically. I would probably play through all of these games in my mind anyways, so we can just fast forward and start off by brute forcing a bunch of scenarios and see where we end up.
+
+```{r}
+playGame <- function (scores, attack = 1) {
+  if (F %in% (scores > 0)) {
+    return(c("A","B")[scores > 0])
+  } else {
+    scores[(!(attack-1))+1] <- scores[(!(attack-1))+1] - scores[attack]
+    return(playGame(scores = scores, attack = ((!(attack-1))+1)))
+  }
+}
+```
+
+```{r}
+results <- data.frame(matrix(ncol = 3, nrow = 1))
+colnames(results) <- c("A", "B", "Winner")
+answerVec <- c()
+for (A in 1:99) {
+  highestB <- 0
+  for (B in 1:99) {
+    winner <- playGame(c(A,B))
+    if (winner == "A") {highestB <- B}
+    results <- rbind(results, c(A, B, winner))
+  }
+  answerVec <- append(answerVec, highestB)
+}
+results <- results[-1,]
+```
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+ggplot(results) +
+  geom_raster(aes(x = as.numeric(A), y = as.numeric(B), fill = Winner)) +
+  scale_x_continuous(limits = c(1,69), expand = c(0, 0), breaks = seq(10,100,10)) +
+  xlab("A Starting 'Power Points'") +
+  scale_y_continuous(limits = c(1,99), expand = c(0, 0), breaks = seq(10,100,10)) +
+  ylab("B Starting 'Power Points'") +
+  theme_pubr()
+```
+
+So, I haven't technically solved this Riddler yet, but there's a clear delineation in the plot where our answer lies. This stair stepping is regular but doesn't seem simple enough for the answer to just be $N$ plus some integer. I looked at the numbers and played around with them for a bit, but none of my guesses seemed to hold up, but then I had an epiphany and realized what I was looking at: a sequence of integers!
+
+OEIS tells me that what I'm looking for is [A000201: the Lower Wythoff sequence (a Beatty sequence)](https://oeis.org/A000201). 
+
+If player A starts with $N$ points and player B starts with anywhere up to
+
+$$floor(N \cdot \frac{1 + \sqrt{5}}{2})$$
+
+points, then player A will win The Game of Attrition.
