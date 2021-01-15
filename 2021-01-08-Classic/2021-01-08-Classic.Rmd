@@ -1,0 +1,71 @@
+---
+title: "Riddler Classic Solution: Can You Cut The Square … Into More Squares?"
+author: "Quoc Tran"
+date: "01/08/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-cut-the-square-into-more-squares/)
+
+#### By Zach Wissner-Gross
+
+Robin of Foxley has entered the FiveThirtyEight archery tournament. Her aim is excellent (relatively speaking), as she is guaranteed to hit the circular target, which has no subdivisions — it’s just one big circle. However, her arrows are equally likely to hit each location within the target.
+
+Her true love, Marian, has issued a challenge. Robin must fire as many arrows as she can, such that each arrow is closer to the center of the target than the previous arrow. For example, if Robin fires three arrows, each closer to the center than the previous, but the fourth arrow is farther than the third, then she is done with the challenge and her score is *four.*
+
+On average, what score can Robin expect to achieve in this archery challenge?
+
+*Extra credit*: Marian now uses a target with 10 concentric circles, whose radii are 1, 2, 3, etc., all the way up to 10 — the radius of the entire target. This time, Robin must fire as many arrows as she can, such that each arrow falls within a smaller concentric circle than the previous arrow. On average, what score can Robin expect to achieve in *this* version of the archery challenge?
+
+***
+
+### My Solution
+
+Alright, I only got so far on math, so we're back in RStudio.
+
+```{r}
+radii <- seq(0, 1, 0.01)
+radProb <- (1:length(radii))^2
+```
+
+```{r}
+simChallenge <- function (n) {
+  allArrows <- sample(radii, 1, prob = radProb) # reverse order
+  nextArrow <- sample(radii, 1, prob = radProb)
+  while (nextArrow < allArrows[1]) {
+    allArrows <- append(nextArrow, allArrows)
+    nextArrow <- sample(radii, 1, prob = radProb)
+  }
+  return(length(allArrows) + 1)
+}
+```
+
+```{r}
+allScores <- sapply(1:100000, simChallenge)
+print(paste("On average, Robin can expect a score of", mean(allScores), "in this archery challenge."))
+```
+
+This is suspiciously close to the $e$ and I wouldn't be surprised if it was $e$ since that little guy shows up everywhere, but all the simulations seem to converge on 2.69
+
+```{r}
+radii <- seq(0, 1, 0.001)
+radProb <- (1:length(radii))^2
+allScores <- sapply(1:100000, simChallenge)
+print(paste("On average, Robin can expect a score of", mean(allScores), "in this archery challenge."))
+```
+
+Okay wait. I increased the resolution of my radii to sample from and now it's so close to $e$ that I'm going to say that the answer $e$ — not that I have any understanding of why that is, though.
+
+Extra credit time:
+
+```{r}
+radii <- 1:10
+radProb <- (1:10)^2 - (0:9)^2 
+allScores <- sapply(1:100000, simChallenge)
+print(paste("On average, Robin can expect a score of", mean(allScores), "in this archery challenge."))
+```
+
