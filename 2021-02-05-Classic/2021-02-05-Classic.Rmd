@@ -1,0 +1,111 @@
+---
+title: "Riddler Classic Solution: Can You Randomly Move The Tower?"
+author: "Quoc Tran"
+date: "02/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-randomly-move-the-tower/)
+
+#### By Zach Wissner-Gross
+
+From Toby Berger comes a towering challenge:
+
+Cassius the ape (a friend of Caesar’s) has gotten his hands on a [Lucas’ Tower puzzle](https://www.youtube.com/watch?v=_YP781HgzTE) (also commonly referred to as the “[Tower of Hanoi](https://mathworld.wolfram.com/TowerofHanoi.html)”). This particular puzzle consists of three poles and three disks, all of which start on the same pole. The three disks have different diameters — the biggest disk is at the bottom and the smallest disk is at the top. The goal is to move all three disks from one pole to any other pole, one at a time, but there’s a catch. At no point can a larger disk ever sit atop a smaller disk.
+
+For $N$ disks, the minimum number of moves is $2^N−1$. (Spoiler alert! If you haven’t proven this before, give it a shot. It’s an excellent exercise in [mathematical induction](https://mathworld.wolfram.com/PrincipleofMathematicalInduction.html).)
+
+But this week, the *minimum* number of moves is not in question. It turns out that Cassius couldn’t care less about solving the puzzle, but he is very good at following directions and understands a larger disk can never sit atop a smaller disk. With each move, he randomly chooses one among the set of valid moves.
+
+On average, how many moves will it take for Cassius to solve this puzzle with three disks?
+
+*Extra credit*: On average, how many moves will it take for Cassius to solve this puzzle in the general case of $N$ disks?
+
+***
+
+### My Solution
+
+If million monkeys at a million keyboards can write Shakespeare, then I can just simulate one ape (which apparently isn't a monkey) a million times to solve this puzzle.
+
+```{r}
+# thanks stackoverflow
+lappend <- function (lst, ...){
+  lst <- c(lst, list(...))
+  return(lst)
+}
+
+simGame <- function (nRings = 3) {
+  # rows are top to bottom, each column is a tower
+  towers <- matrix(nrow = nRings, ncol = 3)
+  towers[,1] <- 1:nRings
+  
+  # chooses among valid MOVES - don't mess that up!
+  nMoves <- 0
+  
+  # i THINK this tests for win condition hmm
+  while ((T %in% is.na(towers[,2])) & (T %in% is.na(towers[,3]))) {
+    nMoves <- nMoves + 1
+    possibleMoves <- list()
+    for (i in 1:6) {
+      if (i <= 3) {
+        testMove <- combn(c(1,2,3),2)[,i] # prob should store this
+      } else {
+        testMove <- rev(combn(c(1,2,3),2)[,i - 3])
+      }
+      if (is.na(towers[,testMove[1]][!is.na(towers[,testMove[1]])][1])) {
+        # cant move not a ring
+      } else if (is.na(towers[,testMove[2]][!is.na(towers[,testMove[2]])][1])) {
+        possibleMoves <- lappend(possibleMoves, testMove)
+      } else if (towers[,testMove[1]][!is.na(towers[,testMove[1]])][1] < towers[,testMove[2]][!is.na(towers[,testMove[2]])][1]) {
+        possibleMoves <- lappend(possibleMoves, testMove)
+      }
+    }
+    
+    move <- possibleMoves[[sample(1:length(possibleMoves),1)]]
+    # this is getting out of hand
+    towers[sum(is.na(towers[,move[2]])),move[2]] <- towers[sum(is.na(towers[,move[1]]))+1,move[1]]
+    towers[sum(is.na(towers[,move[1]]))+1,move[1]] <- NA
+  }
+  
+  return(nMoves)
+}
+
+```
+
+```{r}
+allRuns <- c()
+for (i in 1:1000) {
+  allRuns <- append(allRuns, simGame())
+}
+print(paste("It takes my virtual Cassius an average of", mean(allRuns), "moves to solve the puzzle with three disks."))
+```
+
+That was hell to debug and I became so entrenched in this way of simulating when I should have just started from scratch. This is so inefficient -- I am nothing more than a monkey at a keyboard :(
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+ggplot(data.frame(allRuns)) +
+  geom_histogram(aes(x = allRuns), binwidth = 10) +
+  theme_pubr()
+```
+
+```{r, eval = F}
+extraCredit <- data.frame(N = 3, moves = mean(allRuns), sd = sd(allRuns))
+for (N in 4:20) {
+  allRunsN <- c()
+  for (i in 1:100) { # a lot less :(
+    allRunsN <- append(allRunsN, simGame(nRings = N))
+  }
+  print(N)
+  print(mean(allRunsN))
+  extraCredit[nrow(extraCredit)+1,] <- c(N, mean(allRunsN), sd(allRunsN))
+}
+```
+
+As expected, the complexity got way out of hand. With six rings, the mean number of moves was like 12,000, so simulating it seems to be not feasible (with my code at least). I'm tired and I'm craving sushi, so we'll just give up for not. Though I probably won't end up getting sushi because it's 11pm and I don't think there are any sushi places open this late.
+
