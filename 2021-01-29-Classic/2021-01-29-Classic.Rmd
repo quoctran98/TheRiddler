@@ -1,0 +1,78 @@
+---
+title: "Riddler Classic Solution: Can You Guess The Mystery Word?"
+author: "Quoc Tran"
+date: "01/29/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-guess-the-mystery-word/)
+
+#### By Zach Wissner-Gross
+
+From Vince Vatter, one of the two reigning [Wordsmiths Extraordinaire](https://fivethirtyeight.com/features/whats-the-optimal-way-to-play-horse) of Riddler Nation, comes a puzzle that is sure to please anyone who fondly remembers [that time](https://fivethirtyeight.com/features/can-you-solve-the-vexing-vexillology/) Spelling Bee appeared in this column:
+
+You are a contestant on the game show [Lingo](https://www.imdb.com/title/tt0329871/), where your objective is to determine a five-letter mystery word. You are told this word’s first letter, after which you have five attempts to guess the word. You can guess any five-letter word, even one that has a different first letter.
+
+After each of your guesses, you are told which letters of your guess are also in the mystery word and whether any of the letters are in the correct position. In the example below, T is in the correct position (remember, the first letter is provided to you), while A and C are in the mystery word but not in the correct positions.
+
+![](https://fivethirtyeight.com/wp-content/uploads/2021/01/Screen-Shot-2021-01-28-at-11.43.27-AM.png?w=1256)
+
+Guess 1: TEACH. T is in the correct position, A and C are not.
+For this example, here’s how you might have figured out the mystery word (TACOS) using all five guesses:
+
+![](https://fivethirtyeight.com/wp-content/uploads/2021/01/Screen-Shot-2021-01-28-at-11.43.34-AM.png?w=1216)
+
+Guesses: TEACH, TRACK, TACKS, TAILS, TACOS. In TRACK, T is in the correct position, A and C are not. In TACKS, T A C and S are in the correct positions. In TAILS, T A and S are in the correct positions. TACOS is the correct word.
+
+The mystery word and guesses can contain multiple instances of a letter. For example, the mystery word MISOS contains one O, so a guess with more than one O (like MOSSO) will only have the first O marked as correct (but in this case, in the wrong position).
+
+![](https://fivethirtyeight.com/wp-content/uploads/2021/01/Screen-Shot-2021-01-28-at-11.43.43-AM.png?w=1204)
+
+Guesses: MAGIC, MAIMS, SUMPS, MOSSO, and MISOS. In MAGIC, M is in the correct position, I is not. In MAIMS, M and S are in the correct positions, I is not. In SUMPS, the last S is in the correct position, the first S and the M are not. In MOSSO, the first M and the first S are in the correct positions, the first O and the second S are not. MISOS is the correct word.
+
+As a contestant, your plan is to make a mockery of the game show by adopting a bold strategy: No matter what, before you are even told what the first letter of the mystery word is, you have decided what your first four guesses will be. Then, with your fifth guess, you will use the results of your first four guesses (and your encyclopedic knowledge of five-letter words!) to determine all remaining possibilities for the mystery word. If multiple mystery words are still possible, you will pick one of these at random.
+
+Which four five-letter words would you choose to maximize your chances of victory? Assume that the mystery word is selected randomly from [this word list](https://norvig.com/ngrams/enable1.txt), which is also the list your guesses must be chosen from.
+
+*Extra credit*: For the four five-letter words you chose, what are your chances of victory?
+
+***
+
+### My Solution
+
+I love these word puzzles mostly because there's (probably) no analytical solution so I don't have to feel bad for brute forcing it.
+
+```{r}
+library(stringr)
+wordList <- readLines("enable1.txt") # add new line to end of file
+wordList <- wordList[str_length(wordList) == 5]
+```
+
+Wait. There's too many words. So I've come up with a sort of heuristic: We're allowed to have 20 letters, so we'll try to find a combination of words that excludes the 6 least common ones on our list (in terms of how often they appear on the list -- multiple times in the same word won't matter hmmm).
+
+```{r}
+countLetter <- function (letter) {return(sum(str_detect(wordList, letter)))} 
+letterFreq <- sapply(letters, countLetter)
+names(letterFreq) <- letters
+print(names(sort(letterFreq)[1:6]))
+```
+
+To fit all 20 of the most common letters in 4 words, we'll have to get rid of any words with duplicate letters. This might be a mistake, but let's just see for now.
+
+```{r}
+allUnique <- function (word) {return(length(unique(unlist(str_split(word,"")))) == 5)}
+possibleGuesses <- wordList[sapply(wordList, allUnique)]
+```
+
+
+
+
+
+
+
+
+

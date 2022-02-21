@@ -1,0 +1,40 @@
+---
+title: "Riddler Classic Solution: Can You Hunt For The Mysterious Numbers?"
+author: "Quoc Tran"
+date: "01/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### [Riddler Classic](https://fivethirtyeight.com/features/can-you-hunt-for-the-mysterious-numbers/)
+
+#### By Zach Wissner-Gross
+
+In a world of sudokus, KenKens and kakuros, Barbara Yew offers a different sort of number puzzle:
+
+There are eight three-digit numbers — each belongs in a row of the table below, with one digit per cell. The products of the three digits of each number are shown in the rightmost column. Meanwhile, the products of the digits in the hundreds, tens, and ones places, respectively, are shown in the bottom row.
+
+![](https://fivethirtyeight.com/wp-content/uploads/2021/01/RIDDLER.011521.png?w=1400)
+
+Can you find all eight three-digit numbers and complete the table? It’s a bit of a mystery, but I’m sure you have it within you to hunt down the answer!
+
+***
+
+### My Solution
+
+A math puzzle? Time to brute force it, though it'll be fun finding the _best_ way to do that.
+
+```{r}
+toProduct <- function (product, digits) {
+  numbers <- expand.grid(rep(list(1:9), digits)) # not including zero
+  for (row in 1:nrow(numbers)) {
+    numbers[row, "products"] <- prod(numbers[row, 1:digits])
+    numbers[row, "solution"] <- paste(numbers[row, 1:digits], collapse = "")
+  }
+  return(as.numeric(numbers[numbers$products == product, "solution"]))
+}
+```
+
